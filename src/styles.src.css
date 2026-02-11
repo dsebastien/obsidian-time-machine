@@ -85,7 +85,7 @@
        ======================================== */
 
     .tm-timeline-slider {
-        @apply flex flex-col gap-0.5 px-3 py-2;
+        @apply flex flex-col gap-2 px-3 py-2;
         border-bottom: 1px solid var(--background-modifier-border);
     }
 
@@ -101,7 +101,7 @@
         appearance: none;
         /* Override the browser default 100 / 160px width */
         min-width: 0;
-        max-width: 100%;
+        max-width: none;
         /* Height matches thumb so it stays vertically centered */
         height: 20px;
         margin: 0;
@@ -109,6 +109,7 @@
         border: none;
         outline: none;
         background: transparent;
+        box-sizing: border-box;
         --slider-progress: 0%;
     }
 
