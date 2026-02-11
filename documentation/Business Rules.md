@@ -37,4 +37,8 @@ The plugin compares the live file content against a selected backup (current vs 
 
 ## Timeline Slider
 
-The slider maps left=oldest, right=newest. It auto-selects the newest snapshot on render and fires diff computation on each change.
+The slider maps left=newest, right=oldest. It auto-selects the newest snapshot on render and fires diff computation on each change. The slider is hidden when only one snapshot exists (just the date info and diff are shown).
+
+## Snapshot Filtering
+
+Snapshots identical to the current file content are filtered out at render time. If all snapshots are filtered out, the "no snapshots" empty state is shown. Filtering is re-evaluated each time the view updates for a file.

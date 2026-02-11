@@ -83,12 +83,24 @@ export class TimeMachineView extends ItemView {
         this.currentFile = file
         this.selectedBackupIndex = null
 
+        let allBackups: FileRecoveryBackup[] = []
         try {
-            this.backups = await FileRecoveryService.getBackups(this.app, file.path)
+            allBackups = await FileRecoveryService.getBackups(this.app, file.path)
         } catch (error) {
             log('Failed to fetch backups', 'error', error)
-            this.backups = []
+            allBackups = []
         }
+
+        if (allBackups.length === 0) {
+            this.backups = []
+            this.renderHeader(file)
+            renderEmptyState(this.contentAreaEl, 'no-snapshots')
+            return
+        }
+
+        // Filter out snapshots identical to current file content
+        const currentContent = await this.app.vault.read(file)
+        this.backups = allBackups.filter((backup) => backup.data !== currentContent)
 
         this.renderHeader(file)
 

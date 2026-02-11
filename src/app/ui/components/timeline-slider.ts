@@ -25,55 +25,56 @@ export class TimelineSliderComponent {
             return
         }
 
-        const max = backups.length - 1
+        // Only show slider when there are multiple snapshots
+        if (backups.length > 1) {
+            const max = backups.length - 1
 
-        // Range input
-        const slider = this.container.createEl('input', {
-            cls: 'tm-timeline-slider-input',
-            type: 'range'
-        })
-        slider.min = '0'
-        slider.max = String(max)
-        slider.step = '1'
-        slider.value = '0' // Start at newest (left end)
+            // Range input
+            const slider = this.container.createEl('input', {
+                cls: 'tm-timeline-slider-input',
+                type: 'range'
+            })
+            slider.min = '0'
+            slider.max = String(max)
+            slider.step = '1'
+            slider.value = '0' // Start at newest (left end)
 
-        // Edge labels row (newest left, oldest right)
-        const edgeLabels = this.container.createDiv({ cls: 'tm-timeline-slider-edges' })
-        const newest = backups[0]
-        const oldest = backups[max]
-        if (newest) {
-            edgeLabels.createDiv({
-                cls: 'tm-timeline-slider-edge-label',
-                text: formatBackupDate(newest.ts)
+            // Edge labels row (newest left, oldest right)
+            const edgeLabels = this.container.createDiv({ cls: 'tm-timeline-slider-edges' })
+            const newest = backups[0]
+            const oldest = backups[max]
+            if (newest) {
+                edgeLabels.createDiv({
+                    cls: 'tm-timeline-slider-edge-label',
+                    text: formatBackupDate(newest.ts)
+                })
+            }
+            if (oldest) {
+                edgeLabels.createDiv({
+                    cls: 'tm-timeline-slider-edge-label',
+                    text: formatBackupDate(oldest.ts)
+                })
+            }
+
+            slider.addEventListener('input', () => {
+                const sliderValue = parseInt(slider.value, 10)
+                this.updateSelectedDisplay(sliderValue)
+                const backup = this.backups[sliderValue]
+                if (backup) {
+                    this.callbacks.onSelect(backup, sliderValue)
+                }
             })
         }
-        if (oldest) {
-            edgeLabels.createDiv({
-                cls: 'tm-timeline-slider-edge-label',
-                text: formatBackupDate(oldest.ts)
-            })
-        }
 
-        // Selected date display
+        // Selected date display (shown for both single and multiple snapshots)
         const selectedInfo = this.container.createDiv({ cls: 'tm-timeline-slider-selected' })
         this.selectedDateEl = selectedInfo.createDiv({ cls: 'tm-timeline-slider-selected-date' })
         this.selectedRelativeEl = selectedInfo.createDiv({
             cls: 'tm-timeline-slider-selected-relative'
         })
 
-        // Set initial display to newest
+        // Set initial display and auto-select newest
         this.updateSelectedDisplay(0)
-
-        slider.addEventListener('input', () => {
-            const sliderValue = parseInt(slider.value, 10)
-            this.updateSelectedDisplay(sliderValue)
-            const backup = this.backups[sliderValue]
-            if (backup) {
-                this.callbacks.onSelect(backup, sliderValue)
-            }
-        })
-
-        // Auto-select newest on initial render
         const newestBackup = this.backups[0]
         if (newestBackup) {
             this.callbacks.onSelect(newestBackup, 0)
