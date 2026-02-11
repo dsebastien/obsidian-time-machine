@@ -27,7 +27,6 @@ export class DiffViewerComponent {
         }
 
         this.renderRestoreButton()
-        this.renderDiffHeader(diff)
 
         for (let i = 0; i < diff.hunks.length; i++) {
             const hunk = diff.hunks[i]
@@ -49,13 +48,6 @@ export class DiffViewerComponent {
         restoreBtn.addEventListener('click', () => {
             this.callbacks.onRestoreFullVersion()
         })
-    }
-
-    private renderDiffHeader(diff: DiffResult): void {
-        const header = this.container.createDiv({ cls: 'tm-diff-header' })
-        header.createSpan({ cls: 'tm-diff-old-label', text: diff.oldHeader })
-        header.createSpan({ cls: 'tm-diff-arrow', text: ' → ' })
-        header.createSpan({ cls: 'tm-diff-new-label', text: diff.newHeader })
     }
 
     private renderHunk(

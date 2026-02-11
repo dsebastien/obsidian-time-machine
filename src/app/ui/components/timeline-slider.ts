@@ -29,8 +29,11 @@ export class TimelineSliderComponent {
         if (backups.length > 1) {
             const max = backups.length - 1
 
+            // Slider wrapper for the filled track effect
+            const sliderWrap = this.container.createDiv({ cls: 'tm-timeline-slider-wrap' })
+
             // Range input
-            const slider = this.container.createEl('input', {
+            const slider = sliderWrap.createEl('input', {
                 cls: 'tm-timeline-slider-input',
                 type: 'range'
             })
@@ -38,6 +41,9 @@ export class TimelineSliderComponent {
             slider.max = String(max)
             slider.step = '1'
             slider.value = '0' // Start at newest (left end)
+
+            // Set initial fill
+            this.updateTrackFill(slider, 0, max)
 
             // Edge labels row (newest left, oldest right)
             const edgeLabels = this.container.createDiv({ cls: 'tm-timeline-slider-edges' })
@@ -58,6 +64,7 @@ export class TimelineSliderComponent {
 
             slider.addEventListener('input', () => {
                 const sliderValue = parseInt(slider.value, 10)
+                this.updateTrackFill(slider, sliderValue, max)
                 this.updateSelectedDisplay(sliderValue)
                 const backup = this.backups[sliderValue]
                 if (backup) {
@@ -79,6 +86,11 @@ export class TimelineSliderComponent {
         if (newestBackup) {
             this.callbacks.onSelect(newestBackup, 0)
         }
+    }
+
+    private updateTrackFill(slider: HTMLInputElement, value: number, max: number): void {
+        const percent = max > 0 ? (value / max) * 100 : 0
+        slider.style.setProperty('--slider-progress', `${percent}%`)
     }
 
     private updateSelectedDisplay(sliderValue: number): void {
