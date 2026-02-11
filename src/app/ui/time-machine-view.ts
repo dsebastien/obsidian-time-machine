@@ -116,11 +116,10 @@ export class TimeMachineView extends ItemView {
         this.headerEl.empty()
 
         if (!file) {
-            this.headerEl.createDiv({ cls: 'tm-header-title', text: PLUGIN_NAME })
+            this.headerEl.createDiv({ cls: 'tm-header-file', text: PLUGIN_NAME })
             return
         }
 
-        this.headerEl.createDiv({ cls: 'tm-header-title', text: PLUGIN_NAME })
         this.headerEl.createDiv({ cls: 'tm-header-file', text: file.name })
         this.headerEl.createDiv({
             cls: 'tm-header-count',

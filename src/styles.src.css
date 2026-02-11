@@ -31,22 +31,17 @@
        ======================================== */
 
     .tm-header {
-        @apply flex flex-col gap-1 px-4 py-3;
+        @apply flex items-center justify-between gap-2 px-3 py-1.5;
         border-bottom: 1px solid var(--background-modifier-border);
     }
 
-    .tm-header-title {
-        @apply font-medium text-sm;
+    .tm-header-file {
+        @apply text-xs font-medium truncate min-w-0;
         color: var(--text-normal);
     }
 
-    .tm-header-file {
-        @apply text-xs truncate min-w-0;
-        color: var(--text-muted);
-    }
-
     .tm-header-count {
-        @apply text-xs;
+        @apply text-xs shrink-0;
         color: var(--text-faint);
     }
 
@@ -90,7 +85,7 @@
        ======================================== */
 
     .tm-timeline-slider {
-        @apply flex flex-col gap-2 px-4 py-4;
+        @apply flex flex-col gap-0.5 px-3 py-2;
         border-bottom: 1px solid var(--background-modifier-border);
     }
 
@@ -241,19 +236,22 @@
 
     /* --- Selected snapshot display --- */
     .tm-timeline-slider-selected {
-        @apply flex flex-col items-center gap-0.5 mt-2 py-1;
+        @apply flex items-center justify-center gap-1.5;
     }
 
     .tm-timeline-slider-selected-date {
-        @apply text-sm font-semibold truncate max-w-full;
+        @apply text-xs font-semibold truncate;
         color: var(--text-normal);
-        letter-spacing: -0.01em;
+    }
+
+    .tm-timeline-slider-selected-sep {
+        @apply text-xs;
+        color: var(--text-faint);
     }
 
     .tm-timeline-slider-selected-relative {
-        @apply text-xs truncate max-w-full;
-        color: var(--text-accent);
-        opacity: 0.85;
+        @apply text-xs truncate;
+        color: var(--text-faint);
     }
 
     /* ========================================
@@ -265,20 +263,20 @@
     }
 
     .tm-diff-viewer {
-        @apply flex flex-col gap-2 p-3;
+        @apply flex flex-col gap-1.5 p-2;
     }
 
     .tm-diff-no-changes {
-        @apply text-xs text-center py-6;
+        @apply text-xs text-center py-4;
         color: var(--text-faint);
     }
 
     .tm-diff-toolbar {
-        @apply flex justify-end mb-2;
+        @apply flex justify-end mb-1;
     }
 
     .tm-restore-full-btn {
-        @apply flex items-center gap-1.5 px-3 py-1.5 text-xs rounded cursor-pointer flex-wrap;
+        @apply flex items-center gap-1 px-2 py-1 text-xs rounded cursor-pointer flex-wrap;
         background-color: var(--interactive-normal);
         border: 1px solid var(--background-modifier-border);
         color: var(--text-normal);
@@ -329,8 +327,8 @@
     }
 
     .tm-diff-line {
-        @apply flex px-2;
-        line-height: 1.6;
+        @apply flex px-1.5;
+        line-height: 1.4;
     }
 
     .tm-diff-context {

@@ -75,8 +75,12 @@ export class TimelineSliderComponent {
 
         // Selected date display (shown for both single and multiple snapshots)
         const selectedInfo = this.container.createDiv({ cls: 'tm-timeline-slider-selected' })
-        this.selectedDateEl = selectedInfo.createDiv({ cls: 'tm-timeline-slider-selected-date' })
-        this.selectedRelativeEl = selectedInfo.createDiv({
+        this.selectedDateEl = selectedInfo.createSpan({ cls: 'tm-timeline-slider-selected-date' })
+        selectedInfo.createSpan({
+            cls: 'tm-timeline-slider-selected-sep',
+            text: '\u00B7'
+        })
+        this.selectedRelativeEl = selectedInfo.createSpan({
             cls: 'tm-timeline-slider-selected-relative'
         })
 
