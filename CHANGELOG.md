@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0](https://github.com/dsebastien/obsidian-time-machine/compare/0.1.0...0.2.0) (2026-02-11)
+
+### Features
+
+* **all:** added more spacing between the slider and dates ([92a7138](https://github.com/dsebastien/obsidian-time-machine/commit/92a7138f8bcf43f11637f503e23ec1952dc5bb02))
+* **all:** improved styling of the slider ([131b73d](https://github.com/dsebastien/obsidian-time-machine/commit/131b73d8952fa55132088729158b2a46b6cbeea4))
+
 ## 0.1.0 (2026-02-11)
 
 ### Features
@@ -60,6 +67,7 @@ All notable changes to this project will be documented in this file.
 ## [1.2.0](https://github.com/your-username/obsidian-my-plugin/compare/1.1.0...1.2.0) (2024-05-14)
 ## [1.1.0](https://github.com/your-username/obsidian-my-plugin/compare/1.0.0...1.1.0) (2024-05-13)
 ## 1.0.0 (2024-04-26)
+
 
 
 

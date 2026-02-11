@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.2.0 (2026-02-11)
+
+### Features
+
+- **all:** added more spacing between the slider and dates
+- **all:** improved styling of the slider
+
 ## 0.1.0 (2026-02-11)
 
 ### Features
