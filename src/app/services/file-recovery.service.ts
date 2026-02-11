@@ -2,9 +2,21 @@ import type { App } from 'obsidian'
 import type { FileRecoveryBackup } from '../types/backup.intf'
 import { log } from '../../utils/log'
 
+const DEFAULT_SNAPSHOT_INTERVAL_MINUTES = 5
+
 export class FileRecoveryService {
     static isAvailable(app: App): boolean {
         return app.internalPlugins.getEnabledPluginById('file-recovery') !== null
+    }
+
+    /**
+     * Returns the file-recovery snapshot interval in milliseconds.
+     * Falls back to a default if the plugin is unavailable.
+     */
+    static getSnapshotIntervalMs(app: App): number {
+        const plugin = app.internalPlugins.getEnabledPluginById('file-recovery')
+        const minutes = plugin?.options.intervalMinutes ?? DEFAULT_SNAPSHOT_INTERVAL_MINUTES
+        return minutes * 60 * 1000
     }
 
     static async getBackups(app: App, filePath: string): Promise<FileRecoveryBackup[]> {

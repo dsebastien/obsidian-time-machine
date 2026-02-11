@@ -20,8 +20,13 @@ interface PromisifiedIDBDatabase {
     objectStoreNames: DOMStringList
 }
 
+interface FileRecoveryOptions {
+    intervalMinutes: number
+}
+
 interface FileRecoveryPlugin {
     db: PromisifiedIDBDatabase
+    options: FileRecoveryOptions
 }
 
 interface InternalPlugin {

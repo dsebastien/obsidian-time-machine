@@ -25,7 +25,7 @@ Full version restore requires user confirmation via a modal dialog. Hunk restore
 
 ## View Behavior
 
-The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event and refreshes when the current file is modified (debounced at 1 second). Users open it manually via the "Open view" command.
+The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event and refreshes when the current file is modified (debounced at 1 second). Snapshots are periodically re-fetched from IndexedDB at the file-recovery `intervalMinutes` rate (only when views are open). Users open it manually via the "Open view" command.
 
 ## Snapshot Ordering
 

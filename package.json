@@ -1,11 +1,10 @@
 {
     "name": "obsidian-time-machine",
-    "version": "2.2.0",
-    "description": "TODO: Add your plugin description here",
+    "version": "0.0.0",
+    "description": "Browse, compare, and restore previous versions of your notes using Obsidian's built-in file-recovery snapshots",
     "author": {
-        "name": "Your Name",
-        "email": "your-email@example.com",
-        "url": "https://your-website.com"
+        "name": "Sébastien Dubois",
+        "url": "https://dsebastien.net"
     },
     "keywords": [
         "obsidian",
@@ -15,12 +14,12 @@
     "private": true,
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/your-username/obsidian-my-plugin.git"
+        "url": "git+https://github.com/dsebastien/obsidian-time-machine.git"
     },
     "bugs": {
-        "url": "https://github.com/your-username/obsidian-my-plugin/issues"
+        "url": "https://github.com/dsebastien/obsidian-time-machine/issues"
     },
-    "homepage": "https://github.com/your-username/obsidian-my-plugin",
+    "homepage": "https://github.com/dsebastien/obsidian-time-machine",
     "engines": {
         "node": ">=20.0.0",
         "npm": ">=10.1.0"

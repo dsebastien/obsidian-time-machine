@@ -67,6 +67,21 @@ export class TimeMachinePlugin extends Plugin {
             })
         )
 
+        // Periodically re-fetch snapshots from IndexedDB at the file-recovery interval
+        const snapshotIntervalMs = FileRecoveryService.getSnapshotIntervalMs(this.app)
+        log(`Snapshot poll interval: ${snapshotIntervalMs / 1000}s`, 'debug')
+        this.registerInterval(
+            window.setInterval(() => {
+                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
+                for (const leaf of leaves) {
+                    const view = leaf.view as TimeMachineView
+                    if (view.getViewType() === VIEW_TYPE && view.getCurrentFile()) {
+                        void view.updateForFile(view.getCurrentFile())
+                    }
+                }
+            }, snapshotIntervalMs)
+        )
+
         this.addSettingTab(new TimeMachineSettingTab(this.app, this))
     }
 
