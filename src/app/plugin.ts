@@ -1,4 +1,4 @@
-import { Notice, Plugin, type WorkspaceLeaf } from 'obsidian'
+import { Notice, Plugin, debounce, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
 import { TimeMachineSettingTab } from './settings/settings-tab'
@@ -31,6 +31,37 @@ export class TimeMachinePlugin extends Plugin {
                     const view = leaf.view as TimeMachineView
                     if (view.getViewType() === VIEW_TYPE) {
                         void view.updateForFile(file)
+                    }
+                }
+            })
+        )
+
+        // Refresh view when the currently-viewed file is modified
+        const debouncedRefresh = debounce(
+            () => {
+                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
+                for (const leaf of leaves) {
+                    const view = leaf.view as TimeMachineView
+                    if (view.getViewType() === VIEW_TYPE) {
+                        void view.refreshCurrentContent()
+                    }
+                }
+            },
+            1000,
+            true
+        )
+
+        this.registerEvent(
+            this.app.vault.on('modify', (file) => {
+                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
+                for (const leaf of leaves) {
+                    const view = leaf.view as TimeMachineView
+                    if (
+                        view.getViewType() === VIEW_TYPE &&
+                        view.getCurrentFile()?.path === file.path
+                    ) {
+                        debouncedRefresh()
+                        return
                     }
                 }
             })

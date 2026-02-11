@@ -25,7 +25,7 @@ Full version restore requires user confirmation via a modal dialog. Hunk restore
 
 ## View Behavior
 
-The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event. Users open it manually via the "Open view" command.
+The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event and refreshes when the current file is modified (debounced at 1 second). Users open it manually via the "Open view" command.
 
 ## Snapshot Ordering
 
@@ -41,4 +41,4 @@ The slider maps left=newest, right=oldest. It auto-selects the newest snapshot o
 
 ## Snapshot Filtering
 
-Snapshots identical to the current file content are filtered out at render time. If all snapshots are filtered out, the "no snapshots" empty state is shown. Filtering is re-evaluated each time the view updates for a file.
+Snapshots identical to the current file content are filtered out at render time. If all snapshots are filtered out, the "no snapshots" empty state is shown. Filtering is re-evaluated each time the view updates for a file, including on file modification.

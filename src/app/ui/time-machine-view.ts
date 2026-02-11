@@ -13,6 +13,7 @@ import { log } from '../../utils/log'
 
 export class TimeMachineView extends ItemView {
     private currentFile: TFile | null = null
+    private allBackups: FileRecoveryBackup[] = []
     private backups: FileRecoveryBackup[] = []
     private selectedBackupIndex: number | null = null
 
@@ -39,6 +40,10 @@ export class TimeMachineView extends ItemView {
         return 'clock'
     }
 
+    getCurrentFile(): TFile | null {
+        return this.currentFile
+    }
+
     override async onOpen(): Promise<void> {
         const container = this.containerEl.children[1]
         if (!container) return
@@ -60,12 +65,14 @@ export class TimeMachineView extends ItemView {
 
     override async onClose(): Promise<void> {
         this.currentFile = null
+        this.allBackups = []
         this.backups = []
     }
 
     async updateForFile(file: TFile | null): Promise<void> {
         if (!file) {
             this.currentFile = null
+            this.allBackups = []
             this.backups = []
             this.renderHeader(null)
             renderEmptyState(this.contentAreaEl, 'no-file')
@@ -74,6 +81,7 @@ export class TimeMachineView extends ItemView {
 
         if (!FileRecoveryService.isAvailable(this.app)) {
             this.currentFile = null
+            this.allBackups = []
             this.backups = []
             this.renderHeader(null)
             renderEmptyState(this.contentAreaEl, 'file-recovery-disabled')
@@ -83,15 +91,14 @@ export class TimeMachineView extends ItemView {
         this.currentFile = file
         this.selectedBackupIndex = null
 
-        let allBackups: FileRecoveryBackup[] = []
         try {
-            allBackups = await FileRecoveryService.getBackups(this.app, file.path)
+            this.allBackups = await FileRecoveryService.getBackups(this.app, file.path)
         } catch (error) {
             log('Failed to fetch backups', 'error', error)
-            allBackups = []
+            this.allBackups = []
         }
 
-        if (allBackups.length === 0) {
+        if (this.allBackups.length === 0) {
             this.backups = []
             this.renderHeader(file)
             renderEmptyState(this.contentAreaEl, 'no-snapshots')
@@ -100,7 +107,7 @@ export class TimeMachineView extends ItemView {
 
         // Filter out snapshots identical to current file content
         const currentContent = await this.app.vault.read(file)
-        this.backups = allBackups.filter((backup) => backup.data !== currentContent)
+        this.backups = this.allBackups.filter((backup) => backup.data !== currentContent)
 
         this.renderHeader(file)
 
@@ -110,6 +117,34 @@ export class TimeMachineView extends ItemView {
         }
 
         this.renderContent()
+    }
+
+    /**
+     * Lightweight refresh for file content changes (no IndexedDB re-fetch).
+     * Re-filters cached backups against current content and re-renders as needed.
+     */
+    async refreshCurrentContent(): Promise<void> {
+        if (!this.currentFile || this.allBackups.length === 0) return
+
+        const currentContent = await this.app.vault.read(this.currentFile)
+        const previousCount = this.backups.length
+        this.backups = this.allBackups.filter((backup) => backup.data !== currentContent)
+
+        if (this.backups.length !== previousCount) {
+            // Filtered set changed — full content re-render
+            this.selectedBackupIndex = null
+            this.renderHeader(this.currentFile)
+
+            if (this.backups.length === 0) {
+                renderEmptyState(this.contentAreaEl, 'no-snapshots')
+                return
+            }
+
+            this.renderContent()
+        } else if (this.selectedBackupIndex !== null) {
+            // Same snapshots, just re-compute the diff against new content
+            await this.computeAndRenderDiff()
+        }
     }
 
     private renderHeader(file: TFile | null): void {
