@@ -1,68 +1,79 @@
-import { Plugin } from 'obsidian'
+import { Notice, Plugin, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
-import { MyPluginSettingTab } from './settings/settings-tab'
+import { TimeMachineSettingTab } from './settings/settings-tab'
 import { log } from '../utils/log'
-import { produce } from 'immer'
-import type { Draft } from 'immer'
+import { VIEW_TYPE } from './constants'
+import { TimeMachineView } from './ui/time-machine-view'
+import { registerCommands } from './commands/register-commands'
+import { FileRecoveryService } from './services/file-recovery.service'
 
-// TODO: Rename this class to match your plugin name (e.g., MyAwesomePlugin)
-export class MyPlugin extends Plugin {
-    /**
-     * The plugin settings are immutable
-     */
-    settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+export class TimeMachinePlugin extends Plugin {
+    settings: PluginSettings = { ...DEFAULT_SETTINGS }
 
-    /**
-     * Executed as soon as the plugin loads
-     */
-    override async onload() {
+    override async onload(): Promise<void> {
         log('Initializing', 'debug')
         await this.loadSettings()
 
-        // TODO
+        if (!FileRecoveryService.isAvailable(this.app)) {
+            new Notice(
+                'Time Machine: File Recovery core plugin is not enabled. Please enable it in Settings → Core plugins.'
+            )
+        }
 
-        // Add a settings screen for the plugin
-        this.addSettingTab(new MyPluginSettingTab(this.app, this))
+        this.registerView(VIEW_TYPE, (leaf: WorkspaceLeaf) => new TimeMachineView(leaf, this))
+        registerCommands(this)
+
+        this.registerEvent(
+            this.app.workspace.on('file-open', (file) => {
+                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
+                for (const leaf of leaves) {
+                    const view = leaf.view as TimeMachineView
+                    if (view.getViewType() === VIEW_TYPE) {
+                        void view.updateForFile(file)
+                    }
+                }
+            })
+        )
+
+        this.addSettingTab(new TimeMachineSettingTab(this.app, this))
     }
 
-    override onunload() {}
+    override onunload(): void {
+        log('Unloading', 'debug')
+    }
 
-    /**
-     * Load the plugin settings
-     */
-    async loadSettings() {
-        log('Loading settings', 'debug')
-        let loadedSettings = (await this.loadData()) as PluginSettings
-
-        if (!loadedSettings) {
-            log('Using default settings', 'debug')
-            loadedSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+    async activateView(): Promise<void> {
+        const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE)
+        if (existing.length > 0) {
+            const leaf = existing[0]
+            if (leaf) {
+                await this.app.workspace.revealLeaf(leaf)
+            }
             return
         }
 
-        let needToSaveSettings = false
-
-        this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
-            if (loadedSettings.enabled) {
-                draft.enabled = loadedSettings.enabled
-            } else {
-                log('The loaded settings miss the [enabled] property', 'debug')
-                needToSaveSettings = true
-            }
-        })
-
-        log(`Settings loaded`, 'debug', loadedSettings)
-
-        if (needToSaveSettings) {
-            void this.saveSettings()
+        const leaf = this.app.workspace.getRightLeaf(false)
+        if (leaf) {
+            await leaf.setViewState({ type: VIEW_TYPE, active: true })
+            await this.app.workspace.revealLeaf(leaf)
         }
     }
 
-    /**
-     * Save the plugin settings
-     */
-    async saveSettings() {
+    async loadSettings(): Promise<void> {
+        log('Loading settings', 'debug')
+        const loadedSettings = (await this.loadData()) as PluginSettings | null
+
+        if (!loadedSettings) {
+            log('Using default settings', 'debug')
+            return
+        }
+
+        this.settings = { ...DEFAULT_SETTINGS, ...loadedSettings }
+        log('Settings loaded', 'debug', this.settings)
+    }
+
+    async saveSettings(): Promise<void> {
         log('Saving settings', 'debug', this.settings)
         await this.saveData(this.settings)
         log('Settings saved', 'debug', this.settings)

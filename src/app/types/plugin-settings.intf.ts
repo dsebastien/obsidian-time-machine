@@ -1,10 +1,4 @@
-export interface PluginSettings {
-    /**
-     * Enable
-     */
-    enabled: boolean
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PluginSettings {}
 
-export const DEFAULT_SETTINGS: PluginSettings = {
-    enabled: false
-}
+export const DEFAULT_SETTINGS: PluginSettings = {}

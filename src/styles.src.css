@@ -8,3 +8,248 @@
 .support-header-margin {
     @apply mb-5;
 }
+
+/* ========================================
+   TIME MACHINE - ROOT
+   ======================================== */
+
+.tm-root {
+    @apply flex flex-col h-full overflow-hidden;
+}
+
+/* ========================================
+   TIME MACHINE - HEADER
+   ======================================== */
+
+.tm-header {
+    @apply flex flex-col gap-1 px-4 py-3;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-header-title {
+    @apply font-medium text-sm;
+    color: var(--text-normal);
+}
+
+.tm-header-file {
+    @apply text-xs truncate;
+    color: var(--text-muted);
+}
+
+.tm-header-count {
+    @apply text-xs;
+    color: var(--text-faint);
+}
+
+/* ========================================
+   TIME MACHINE - CONTENT
+   ======================================== */
+
+.tm-content {
+    @apply flex flex-col flex-1 overflow-y-auto;
+}
+
+/* ========================================
+   TIME MACHINE - EMPTY STATE
+   ======================================== */
+
+.tm-empty-state {
+    @apply flex flex-col items-center justify-center gap-3 px-6 py-10;
+}
+
+.tm-empty-state-icon {
+    @apply opacity-40;
+    color: var(--text-muted);
+}
+
+.tm-empty-state-icon svg {
+    @apply w-10 h-10;
+}
+
+.tm-empty-state-text {
+    @apply text-sm m-0 text-center;
+    color: var(--text-muted);
+}
+
+.tm-empty-state-hint {
+    @apply text-xs m-0 text-center;
+    color: var(--text-faint);
+}
+
+/* ========================================
+   TIME MACHINE - COMPARE MODE SELECTOR
+   ======================================== */
+
+.tm-compare-mode {
+    @apply flex items-center gap-2 px-4 py-2;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-compare-mode-label {
+    @apply text-xs;
+    color: var(--text-muted);
+}
+
+.tm-compare-mode-select {
+    @apply text-xs flex-1;
+}
+
+/* ========================================
+   TIME MACHINE - VERSION LIST
+   ======================================== */
+
+.tm-version-list {
+    @apply flex flex-col;
+    max-height: 250px;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-version-item {
+    @apply flex flex-col gap-0.5 px-4 py-2 cursor-pointer;
+    border-bottom: 1px solid var(--background-modifier-border);
+    transition: background-color 100ms ease;
+}
+
+.tm-version-item:last-child {
+    border-bottom: none;
+}
+
+.tm-version-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.tm-version-item--selected {
+    background-color: var(--background-modifier-hover);
+    border-left: 3px solid var(--interactive-accent);
+}
+
+.tm-version-date {
+    @apply text-xs font-medium;
+    color: var(--text-normal);
+}
+
+.tm-version-relative {
+    @apply text-xs;
+    color: var(--text-faint);
+}
+
+/* ========================================
+   TIME MACHINE - DIFF VIEWER
+   ======================================== */
+
+.tm-diff-container {
+    @apply flex-1 overflow-y-auto;
+}
+
+.tm-diff-viewer {
+    @apply flex flex-col gap-2 p-3;
+}
+
+.tm-diff-no-changes {
+    @apply text-xs text-center py-6;
+    color: var(--text-faint);
+}
+
+.tm-diff-toolbar {
+    @apply flex justify-end mb-2;
+}
+
+.tm-restore-full-btn {
+    @apply flex items-center gap-1.5 px-3 py-1.5 text-xs rounded cursor-pointer;
+    background-color: var(--interactive-normal);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+    transition: background-color 100ms ease;
+}
+
+.tm-restore-full-btn:hover {
+    background-color: var(--interactive-hover);
+}
+
+.tm-restore-btn-icon {
+    @apply inline-flex;
+}
+
+.tm-restore-btn-icon svg {
+    @apply w-3.5 h-3.5;
+}
+
+.tm-diff-header {
+    @apply text-xs px-2 py-1 rounded;
+    background-color: var(--background-secondary);
+    color: var(--text-muted);
+}
+
+.tm-diff-old-label {
+    color: var(--text-error);
+}
+
+.tm-diff-new-label {
+    color: var(--text-accent);
+}
+
+.tm-diff-hunk {
+    @apply rounded overflow-hidden;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.tm-diff-hunk-header {
+    @apply flex items-center justify-between px-2 py-1 text-xs;
+    background-color: var(--background-secondary);
+    color: var(--text-faint);
+    font-family: var(--font-monospace);
+}
+
+.tm-diff-hunk-range {
+    @apply text-xs;
+}
+
+.tm-restore-hunk-btn {
+    @apply p-1 rounded;
+    color: var(--text-muted);
+}
+
+.tm-restore-hunk-btn:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+
+.tm-diff-lines {
+    @apply text-xs;
+    font-family: var(--font-monospace);
+}
+
+.tm-diff-line {
+    @apply flex px-2;
+    line-height: 1.6;
+}
+
+.tm-diff-context {
+    background-color: transparent;
+}
+
+.tm-diff-added {
+    background-color: rgba(0, 180, 0, 0.12);
+}
+
+.tm-diff-removed {
+    background-color: rgba(220, 0, 0, 0.12);
+}
+
+.tm-diff-line-prefix {
+    @apply inline-block w-4 shrink-0 select-none;
+    color: var(--text-faint);
+}
+
+.tm-diff-line-content {
+    @apply whitespace-pre-wrap break-all;
+}
+
+/* ========================================
+   TIME MACHINE - CONFIRM DIALOG
+   ======================================== */
+
+.tm-confirm-buttons {
+    @apply flex justify-end gap-2 mt-4;
+}

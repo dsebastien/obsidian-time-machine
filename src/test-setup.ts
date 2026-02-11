@@ -12,8 +12,6 @@ void mock.module('obsidian', () => ({
             // No-op for tests
         }
     },
-    // These are only used as types, but we provide empty implementations
-    // in case they're ever accessed at runtime
     App: class App {},
     TFile: class TFile {},
     Plugin: class Plugin {},
@@ -24,6 +22,27 @@ void mock.module('obsidian', () => ({
     TFolder: class TFolder {},
     AbstractInputSuggest: class AbstractInputSuggest {},
     SearchComponent: class SearchComponent {},
+    ItemView: class ItemView {
+        containerEl = { children: [null, { empty: () => {} }] }
+        app = {}
+        constructor() {}
+        getViewType() {
+            return ''
+        }
+        getDisplayText() {
+            return ''
+        }
+    },
+    Modal: class Modal {
+        app: unknown
+        contentEl = { empty: () => {}, createEl: () => ({}) }
+        constructor(app: unknown) {
+            this.app = app
+        }
+        open() {}
+        close() {}
+    },
+    WorkspaceLeaf: class WorkspaceLeaf {},
     debounce: (fn: (...args: unknown[]) => unknown) => fn,
     setIcon: () => {}
 }))

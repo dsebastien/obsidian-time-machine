@@ -1,11 +1,10 @@
-import { App, PluginSettingTab, Setting } from 'obsidian'
-import type MyPlugin from '../../main'
+import { type App, PluginSettingTab, Setting } from 'obsidian'
+import type TimeMachinePlugin from '../../main'
 
-// TODO: Rename this class to match your plugin name (e.g., MyAwesomePluginSettingTab)
-export class MyPluginSettingTab extends PluginSettingTab {
-    plugin: MyPlugin
+export class TimeMachineSettingTab extends PluginSettingTab {
+    plugin: TimeMachinePlugin
 
-    constructor(app: App, plugin: MyPlugin) {
+    constructor(app: App, plugin: TimeMachinePlugin) {
         super(app, plugin)
         this.plugin = plugin
     }
@@ -18,8 +17,7 @@ export class MyPluginSettingTab extends PluginSettingTab {
         this.renderSupportHeader(containerEl)
     }
 
-    // TODO: Adapt this or remove
-    renderFollowButton(containerEl: HTMLElement) {
+    renderFollowButton(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setName('Follow me on X')
             .setDesc('Sébastien Dubois (@dSebastien)')
@@ -31,13 +29,12 @@ export class MyPluginSettingTab extends PluginSettingTab {
             })
     }
 
-    // TODO: Adapt this or remove
-    renderSupportHeader(containerEl: HTMLElement) {
+    renderSupportHeader(containerEl: HTMLElement): void {
         new Setting(containerEl).setName('Support').setHeading()
 
         const supportDesc = new DocumentFragment()
         supportDesc.createDiv({
-            text: 'Buy me a coffee to support the development of this plugin ❤️'
+            text: 'Buy me a coffee to support the development of this plugin'
         })
 
         new Setting(containerEl).setDesc(supportDesc)
@@ -47,8 +44,7 @@ export class MyPluginSettingTab extends PluginSettingTab {
         spacing.classList.add('support-header-margin')
     }
 
-    // TODO: Adapt this or remove
-    renderBuyMeACoffeeBadge(contentEl: HTMLElement | DocumentFragment, width = 175) {
+    renderBuyMeACoffeeBadge(contentEl: HTMLElement | DocumentFragment, width = 175): void {
         const linkEl = contentEl.createEl('a', {
             href: 'https://www.buymeacoffee.com/dsebastien'
         })
