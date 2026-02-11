@@ -2,7 +2,7 @@
     "id": "obsidian-time-machine",
     "name": "Time Machine",
     "description": "Browse, compare, and restore previous versions of your notes using Obsidian's built-in file-recovery snapshots",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "minAppVersion": "1.4.0",
     "isDesktopOnly": false,
     "author": "Sébastien Dubois",
