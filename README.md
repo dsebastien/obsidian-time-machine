@@ -4,7 +4,6 @@ Ever accidentally deleted a paragraph, overwrote a section, or wished you could 
 
 <img width="1830" height="933" alt="screenshot-2026-02-11_10-50-56" src="https://github.com/user-attachments/assets/0c6afa48-f4e9-4e77-a544-cd4d92155905" />
 
-
 ## What it does
 
 Time Machine turns Obsidian's built-in File Recovery snapshots into a visual, interactive timeline. Scrub through your note's history with a slider, see exactly what changed, and restore anything -- an entire version or just a single paragraph.

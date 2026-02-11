@@ -96,10 +96,11 @@
 
     /* --- Range input: reset & full-width override --- */
     .tm-timeline-slider-input {
-        @apply w-full block cursor-pointer;
+        @apply block cursor-pointer;
         -webkit-appearance: none;
         appearance: none;
-        /* Override the browser default 100 / 160px width */
+        /* Override Obsidian's input[type='range'] { width: 100px } */
+        width: 100% !important;
         min-width: 0;
         max-width: none;
         /* Height matches thumb so it stays vertically centered */
@@ -313,7 +314,7 @@
     }
 
     .tm-restore-hunk-btn {
-        @apply p-1 rounded;
+        @apply p-1 rounded cursor-pointer;
         color: var(--text-muted);
     }
 
