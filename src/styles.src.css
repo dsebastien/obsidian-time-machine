@@ -1,255 +1,283 @@
-@import 'tailwindcss';
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 /* ========================================
-   SUPPORT & UI SECTIONS
+   TIME MACHINE - PLUGIN STYLES
+   Isolated in the components layer to avoid
+   leaking into Obsidian's global styles.
    ======================================== */
 
-/* Support section */
-.support-header-margin {
-    @apply mb-5;
-}
+@layer components {
+    /* ========================================
+       SUPPORT & UI SECTIONS
+       ======================================== */
 
-/* ========================================
-   TIME MACHINE - ROOT
-   ======================================== */
+    /* Support section */
+    .support-header-margin {
+        @apply mb-5;
+    }
 
-.tm-root {
-    @apply flex flex-col h-full overflow-hidden;
-}
+    /* ========================================
+       TIME MACHINE - ROOT
+       ======================================== */
 
-/* ========================================
-   TIME MACHINE - HEADER
-   ======================================== */
+    .tm-root {
+        @apply flex flex-col h-full overflow-hidden;
+    }
 
-.tm-header {
-    @apply flex flex-col gap-1 px-4 py-3;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
+    /* ========================================
+       TIME MACHINE - HEADER
+       ======================================== */
 
-.tm-header-title {
-    @apply font-medium text-sm;
-    color: var(--text-normal);
-}
+    .tm-header {
+        @apply flex flex-col gap-1 px-4 py-3;
+        border-bottom: 1px solid var(--background-modifier-border);
+    }
 
-.tm-header-file {
-    @apply text-xs truncate;
-    color: var(--text-muted);
-}
+    .tm-header-title {
+        @apply font-medium text-sm;
+        color: var(--text-normal);
+    }
 
-.tm-header-count {
-    @apply text-xs;
-    color: var(--text-faint);
-}
+    .tm-header-file {
+        @apply text-xs truncate min-w-0;
+        color: var(--text-muted);
+    }
 
-/* ========================================
-   TIME MACHINE - CONTENT
-   ======================================== */
+    .tm-header-count {
+        @apply text-xs;
+        color: var(--text-faint);
+    }
 
-.tm-content {
-    @apply flex flex-col flex-1 overflow-y-auto;
-}
+    /* ========================================
+       TIME MACHINE - CONTENT
+       ======================================== */
 
-/* ========================================
-   TIME MACHINE - EMPTY STATE
-   ======================================== */
+    .tm-content {
+        @apply flex flex-col flex-1 overflow-y-auto;
+    }
 
-.tm-empty-state {
-    @apply flex flex-col items-center justify-center gap-3 px-6 py-10;
-}
+    /* ========================================
+       TIME MACHINE - EMPTY STATE
+       ======================================== */
 
-.tm-empty-state-icon {
-    @apply opacity-40;
-    color: var(--text-muted);
-}
+    .tm-empty-state {
+        @apply flex flex-col items-center justify-center gap-3 px-6 py-10;
+    }
 
-.tm-empty-state-icon svg {
-    @apply w-10 h-10;
-}
+    .tm-empty-state-icon {
+        @apply opacity-40;
+        color: var(--text-muted);
+    }
 
-.tm-empty-state-text {
-    @apply text-sm m-0 text-center;
-    color: var(--text-muted);
-}
+    .tm-empty-state-icon svg {
+        @apply w-10 h-10;
+    }
 
-.tm-empty-state-hint {
-    @apply text-xs m-0 text-center;
-    color: var(--text-faint);
-}
+    .tm-empty-state-text {
+        @apply text-sm m-0 text-center;
+        color: var(--text-muted);
+    }
 
-/* ========================================
-   TIME MACHINE - COMPARE MODE SELECTOR
-   ======================================== */
+    .tm-empty-state-hint {
+        @apply text-xs m-0 text-center;
+        color: var(--text-faint);
+    }
 
-.tm-compare-mode {
-    @apply flex items-center gap-2 px-4 py-2;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
+    /* ========================================
+       TIME MACHINE - TIMELINE SLIDER
+       ======================================== */
 
-.tm-compare-mode-label {
-    @apply text-xs;
-    color: var(--text-muted);
-}
+    .tm-timeline-slider {
+        @apply flex flex-col gap-1 px-1 py-3;
+        border-bottom: 1px solid var(--background-modifier-border);
+    }
 
-.tm-compare-mode-select {
-    @apply text-xs flex-1;
-}
+    .tm-timeline-slider-input {
+        @apply w-full cursor-pointer;
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        border-radius: 3px;
+        outline: none;
+        background: var(--background-modifier-border);
+    }
 
-/* ========================================
-   TIME MACHINE - VERSION LIST
-   ======================================== */
+    .tm-timeline-slider-input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--interactive-accent);
+        cursor: pointer;
+        border: 2px solid var(--background-primary);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
 
-.tm-version-list {
-    @apply flex flex-col;
-    max-height: 250px;
-    overflow-y: auto;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
+    .tm-timeline-slider-input::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--interactive-accent);
+        cursor: pointer;
+        border: 2px solid var(--background-primary);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
 
-.tm-version-item {
-    @apply flex flex-col gap-0.5 px-4 py-2 cursor-pointer;
-    border-bottom: 1px solid var(--background-modifier-border);
-    transition: background-color 100ms ease;
-}
+    .tm-timeline-slider-input::-webkit-slider-runnable-track {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--background-modifier-border);
+    }
 
-.tm-version-item:last-child {
-    border-bottom: none;
-}
+    .tm-timeline-slider-input::-moz-range-track {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--background-modifier-border);
+    }
 
-.tm-version-item:hover {
-    background-color: var(--background-modifier-hover);
-}
+    .tm-timeline-slider-edges {
+        @apply flex justify-between gap-2 min-w-0;
+    }
 
-.tm-version-item--selected {
-    background-color: var(--background-modifier-hover);
-    border-left: 3px solid var(--interactive-accent);
-}
+    .tm-timeline-slider-edge-label {
+        @apply text-xs truncate shrink min-w-0;
+        color: var(--text-faint);
+    }
 
-.tm-version-date {
-    @apply text-xs font-medium;
-    color: var(--text-normal);
-}
+    .tm-timeline-slider-selected {
+        @apply flex flex-col items-center gap-0.5 mt-1;
+    }
 
-.tm-version-relative {
-    @apply text-xs;
-    color: var(--text-faint);
-}
+    .tm-timeline-slider-selected-date {
+        @apply text-xs font-medium truncate max-w-full;
+        color: var(--text-normal);
+    }
 
-/* ========================================
-   TIME MACHINE - DIFF VIEWER
-   ======================================== */
+    .tm-timeline-slider-selected-relative {
+        @apply text-xs truncate max-w-full;
+        color: var(--text-faint);
+    }
 
-.tm-diff-container {
-    @apply flex-1 overflow-y-auto;
-}
+    /* ========================================
+       TIME MACHINE - DIFF VIEWER
+       ======================================== */
 
-.tm-diff-viewer {
-    @apply flex flex-col gap-2 p-3;
-}
+    .tm-diff-container {
+        @apply flex-1 overflow-y-auto;
+    }
 
-.tm-diff-no-changes {
-    @apply text-xs text-center py-6;
-    color: var(--text-faint);
-}
+    .tm-diff-viewer {
+        @apply flex flex-col gap-2 p-3;
+    }
 
-.tm-diff-toolbar {
-    @apply flex justify-end mb-2;
-}
+    .tm-diff-no-changes {
+        @apply text-xs text-center py-6;
+        color: var(--text-faint);
+    }
 
-.tm-restore-full-btn {
-    @apply flex items-center gap-1.5 px-3 py-1.5 text-xs rounded cursor-pointer;
-    background-color: var(--interactive-normal);
-    border: 1px solid var(--background-modifier-border);
-    color: var(--text-normal);
-    transition: background-color 100ms ease;
-}
+    .tm-diff-toolbar {
+        @apply flex justify-end mb-2;
+    }
 
-.tm-restore-full-btn:hover {
-    background-color: var(--interactive-hover);
-}
+    .tm-restore-full-btn {
+        @apply flex items-center gap-1.5 px-3 py-1.5 text-xs rounded cursor-pointer flex-wrap;
+        background-color: var(--interactive-normal);
+        border: 1px solid var(--background-modifier-border);
+        color: var(--text-normal);
+        transition: background-color 100ms ease;
+    }
 
-.tm-restore-btn-icon {
-    @apply inline-flex;
-}
+    .tm-restore-full-btn:hover {
+        background-color: var(--interactive-hover);
+    }
 
-.tm-restore-btn-icon svg {
-    @apply w-3.5 h-3.5;
-}
+    .tm-restore-btn-icon {
+        @apply inline-flex;
+    }
 
-.tm-diff-header {
-    @apply text-xs px-2 py-1 rounded;
-    background-color: var(--background-secondary);
-    color: var(--text-muted);
-}
+    .tm-restore-btn-icon svg {
+        @apply w-3.5 h-3.5;
+    }
 
-.tm-diff-old-label {
-    color: var(--text-error);
-}
+    .tm-diff-header {
+        @apply text-xs px-2 py-1 rounded truncate min-w-0;
+        background-color: var(--background-secondary);
+        color: var(--text-muted);
+    }
 
-.tm-diff-new-label {
-    color: var(--text-accent);
-}
+    .tm-diff-old-label {
+        color: var(--text-error);
+    }
 
-.tm-diff-hunk {
-    @apply rounded overflow-hidden;
-    border: 1px solid var(--background-modifier-border);
-}
+    .tm-diff-new-label {
+        color: var(--text-accent);
+    }
 
-.tm-diff-hunk-header {
-    @apply flex items-center justify-between px-2 py-1 text-xs;
-    background-color: var(--background-secondary);
-    color: var(--text-faint);
-    font-family: var(--font-monospace);
-}
+    .tm-diff-hunk {
+        @apply rounded overflow-hidden;
+        border: 1px solid var(--background-modifier-border);
+    }
 
-.tm-diff-hunk-range {
-    @apply text-xs;
-}
+    .tm-diff-hunk-header {
+        @apply flex items-center justify-between px-2 py-1 text-xs;
+        background-color: var(--background-secondary);
+        color: var(--text-faint);
+        font-family: var(--font-monospace);
+    }
 
-.tm-restore-hunk-btn {
-    @apply p-1 rounded;
-    color: var(--text-muted);
-}
+    .tm-diff-hunk-range {
+        @apply text-xs truncate min-w-0;
+    }
 
-.tm-restore-hunk-btn:hover {
-    color: var(--text-normal);
-    background-color: var(--background-modifier-hover);
-}
+    .tm-restore-hunk-btn {
+        @apply p-1 rounded;
+        color: var(--text-muted);
+    }
 
-.tm-diff-lines {
-    @apply text-xs;
-    font-family: var(--font-monospace);
-}
+    .tm-restore-hunk-btn:hover {
+        color: var(--text-normal);
+        background-color: var(--background-modifier-hover);
+    }
 
-.tm-diff-line {
-    @apply flex px-2;
-    line-height: 1.6;
-}
+    .tm-diff-lines {
+        @apply text-xs overflow-x-auto;
+        font-family: var(--font-monospace);
+    }
 
-.tm-diff-context {
-    background-color: transparent;
-}
+    .tm-diff-line {
+        @apply flex px-2;
+        line-height: 1.6;
+    }
 
-.tm-diff-added {
-    background-color: rgba(0, 180, 0, 0.12);
-}
+    .tm-diff-context {
+        background-color: transparent;
+    }
 
-.tm-diff-removed {
-    background-color: rgba(220, 0, 0, 0.12);
-}
+    .tm-diff-added {
+        background-color: rgba(0, 180, 0, 0.12);
+    }
 
-.tm-diff-line-prefix {
-    @apply inline-block w-4 shrink-0 select-none;
-    color: var(--text-faint);
-}
+    .tm-diff-removed {
+        background-color: rgba(220, 0, 0, 0.12);
+    }
 
-.tm-diff-line-content {
-    @apply whitespace-pre-wrap break-all;
-}
+    .tm-diff-line-prefix {
+        @apply inline-block w-4 shrink-0 select-none;
+        color: var(--text-faint);
+    }
 
-/* ========================================
-   TIME MACHINE - CONFIRM DIALOG
-   ======================================== */
+    .tm-diff-line-content {
+        @apply whitespace-pre-wrap break-all;
+    }
 
-.tm-confirm-buttons {
-    @apply flex justify-end gap-2 mt-4;
+    /* ========================================
+       TIME MACHINE - CONFIRM DIALOG
+       ======================================== */
+
+    .tm-confirm-buttons {
+        @apply flex justify-end gap-2 mt-4;
+    }
 }

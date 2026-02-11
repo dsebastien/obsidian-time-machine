@@ -31,7 +31,10 @@ The Time Machine view opens in the right sidebar. It auto-updates when switching
 
 Backups are always sorted descending by timestamp (newest first).
 
-## Compare Modes
+## Compare Mode
 
-- **Current vs version**: compares the live file content against a selected backup
-- **Version vs version**: compares two selected backups (older vs newer based on timestamps)
+The plugin compares the live file content against a selected backup (current vs version). Users select snapshots via a timeline slider.
+
+## Timeline Slider
+
+The slider maps left=oldest, right=newest. It auto-selects the newest snapshot on render and fires diff computation on each change.

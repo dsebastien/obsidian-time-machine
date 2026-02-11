@@ -1,5 +1,3 @@
-export type CompareMode = 'current-vs-version' | 'version-vs-version'
-
 export interface DiffHunk {
     oldStart: number
     oldLines: number

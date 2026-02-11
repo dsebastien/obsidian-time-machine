@@ -6,11 +6,6 @@
 - `ts: number` — timestamp (epoch ms)
 - `data: string` — full file content at snapshot time
 
-## CompareMode
-
-- `'current-vs-version'` — compare current file content against a selected backup
-- `'version-vs-version'` — compare two backups against each other
-
 ## DiffResult
 
 - `oldHeader: string` — label for the old version

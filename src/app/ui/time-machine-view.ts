@@ -2,28 +2,23 @@ import { ItemView, Modal, type TFile, type WorkspaceLeaf } from 'obsidian'
 import { VIEW_TYPE, PLUGIN_NAME } from '../constants'
 import type { TimeMachinePlugin } from '../plugin'
 import type { FileRecoveryBackup } from '../types/backup.intf'
-import type { CompareMode } from '../types/diff.intf'
 import type { DiffResult } from '../types/diff.intf'
 import { FileRecoveryService } from '../services/file-recovery.service'
 import { DiffService } from '../services/diff.service'
 import { RestoreService } from '../services/restore.service'
 import { renderEmptyState } from './components/empty-state'
-import { VersionListComponent } from './components/version-list'
-import { CompareModeSelectorComponent } from './components/compare-mode-selector'
+import { TimelineSliderComponent } from './components/timeline-slider'
 import { DiffViewerComponent } from './components/diff-viewer'
 import { log } from '../../utils/log'
 
 export class TimeMachineView extends ItemView {
     private currentFile: TFile | null = null
     private backups: FileRecoveryBackup[] = []
-    private compareMode: CompareMode = 'current-vs-version'
     private selectedBackupIndex: number | null = null
-    private secondSelectedBackupIndex: number | null = null
 
     // UI component references
     private headerEl!: HTMLElement
     private contentAreaEl!: HTMLElement
-    private versionList: VersionListComponent | null = null
     private diffViewer: DiffViewerComponent | null = null
 
     override navigation = false
@@ -87,7 +82,6 @@ export class TimeMachineView extends ItemView {
 
         this.currentFile = file
         this.selectedBackupIndex = null
-        this.secondSelectedBackupIndex = null
 
         try {
             this.backups = await FileRecoveryService.getBackups(this.app, file.path)
@@ -125,24 +119,12 @@ export class TimeMachineView extends ItemView {
     private renderContent(): void {
         this.contentAreaEl.empty()
 
-        new CompareModeSelectorComponent(this.contentAreaEl, {
-            onChange: (mode) => {
-                this.compareMode = mode
-                this.selectedBackupIndex = null
-                this.secondSelectedBackupIndex = null
-                if (this.versionList) {
-                    this.versionList.setCompareMode(mode)
-                }
-                this.clearDiff()
-            }
-        })
-
-        this.versionList = new VersionListComponent(this.contentAreaEl, {
+        new TimelineSliderComponent(this.contentAreaEl, {
             onSelect: (_backup, index) => {
-                this.handleVersionSelect(index)
+                this.selectedBackupIndex = index
+                void this.computeAndRenderDiff()
             }
-        })
-        this.versionList.render(this.backups)
+        }).render(this.backups)
 
         const diffContainer = this.contentAreaEl.createDiv({ cls: 'tm-diff-container' })
         this.diffViewer = new DiffViewerComponent(diffContainer, {
@@ -155,65 +137,21 @@ export class TimeMachineView extends ItemView {
         })
     }
 
-    private handleVersionSelect(index: number): void {
-        if (this.compareMode === 'current-vs-version') {
-            this.selectedBackupIndex = index
-            void this.computeAndRenderDiff()
-        } else {
-            // version-vs-version
-            const selected = this.versionList?.getSelectedIndices() ?? []
-            if (selected.length === 2) {
-                this.selectedBackupIndex = selected[0] ?? null
-                this.secondSelectedBackupIndex = selected[1] ?? null
-                void this.computeAndRenderDiff()
-            } else {
-                this.clearDiff()
-            }
-        }
-    }
-
     private async computeAndRenderDiff(): Promise<void> {
-        if (!this.diffViewer) return
+        if (!this.diffViewer || this.selectedBackupIndex === null) return
 
-        let diff: DiffResult | null = null
+        const backup = this.backups[this.selectedBackupIndex]
+        if (!backup || !this.currentFile) return
 
-        if (this.compareMode === 'current-vs-version' && this.selectedBackupIndex !== null) {
-            const backup = this.backups[this.selectedBackupIndex]
-            if (!backup || !this.currentFile) return
-
-            const currentContent = await this.app.vault.read(this.currentFile)
-            diff = DiffService.computeDiff(
-                backup.data,
-                currentContent,
-                `Snapshot (${new Date(backup.ts).toLocaleString()})`,
-                'Current'
-            )
-        } else if (
-            this.compareMode === 'version-vs-version' &&
-            this.selectedBackupIndex !== null &&
-            this.secondSelectedBackupIndex !== null
-        ) {
-            const older =
-                this.backups[Math.max(this.selectedBackupIndex, this.secondSelectedBackupIndex)]
-            const newer =
-                this.backups[Math.min(this.selectedBackupIndex, this.secondSelectedBackupIndex)]
-            if (!older || !newer) return
-
-            diff = DiffService.computeDiff(
-                older.data,
-                newer.data,
-                `Snapshot (${new Date(older.ts).toLocaleString()})`,
-                `Snapshot (${new Date(newer.ts).toLocaleString()})`
-            )
-        }
+        const currentContent = await this.app.vault.read(this.currentFile)
+        const diff: DiffResult = DiffService.computeDiff(
+            backup.data,
+            currentContent,
+            `Snapshot (${new Date(backup.ts).toLocaleString()})`,
+            'Current'
+        )
 
         this.diffViewer.render(diff)
-    }
-
-    private clearDiff(): void {
-        if (this.diffViewer) {
-            this.diffViewer.render(null)
-        }
     }
 
     private async handleRestoreFullVersion(): Promise<void> {
