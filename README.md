@@ -1,63 +1,47 @@
-# Obsidian Plugin Template (Bun)
+# Time Machine for Obsidian
 
-A modern Obsidian plugin template using **Bun** as the package manager and bundler, with TypeScript, Tailwind CSS v4, ESLint, Prettier, and automated release workflows.
+Ever accidentally deleted a paragraph, overwrote a section, or wished you could see what your note looked like an hour ago? **Time Machine** gives you instant access to every snapshot Obsidian has silently saved for you.
+
+## What it does
+
+Time Machine turns Obsidian's built-in File Recovery snapshots into a visual, interactive timeline. Scrub through your note's history with a slider, see exactly what changed, and restore anything -- an entire version or just a single paragraph.
 
 ## Features
 
-- **Bun** for fast package management and bundling
-- **TypeScript** with strict configuration
-- **Tailwind CSS v4** for styling
-- **ESLint + Prettier** for code quality
-- **Husky + lint-staged** for pre-commit hooks
-- **Commitizen + Conventional Commits** for standardized commit messages
-- **GitHub Actions** for CI/CD and automated releases
-- **Immer** for immutable state management
-- **Zod** for runtime validation
+- **Timeline slider** -- drag through your note's history to see how it evolved over time
+- **Colored diff view** -- additions in green, deletions in red, so you can instantly spot what changed
+- **Full version restore** -- roll back your entire note to any previous snapshot
+- **Selective restore** -- restore just the specific changes you want, leaving the rest untouched
+- **Auto-sync** -- the view updates automatically when you switch between files
+- **Zero configuration** -- works immediately with Obsidian's built-in File Recovery, no setup needed
+- **Smart filtering** -- only shows snapshots that actually differ from your current content
+- **Desktop and mobile** -- works wherever Obsidian runs
 
-## Getting Started
+## Getting started
 
-See [TEMPLATE_USAGE.md](./TEMPLATE_USAGE.md) for detailed instructions on how to use this template to create your own Obsidian plugin.
+1. Enable the **File Recovery** core plugin in **Settings -> Core plugins** (it's usually on by default)
+2. Install Time Machine from the Community Plugins browser
+3. Open the command palette (`Ctrl/Cmd + P`) and run **Time Machine: Open view**
+4. Start browsing your note's history
 
-## Quick Start
+## How it works
 
-1. Click "Use this template" on GitHub to create a new repository
-2. Clone your new repository
-3. Follow the setup instructions in [TEMPLATE_USAGE.md](./TEMPLATE_USAGE.md)
-4. Run `bun install` to install dependencies
-5. Run `bun run dev` to start development
+Obsidian's File Recovery core plugin automatically saves snapshots of your notes at regular intervals (every 2 minutes by default). Time Machine reads these snapshots and presents them as an interactive timeline with diff visualization.
 
-## Development
+You don't need to do anything special -- just write your notes as usual. Time Machine will always have your history ready when you need it.
 
-See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed development instructions.
+## Documentation
 
-### Prerequisites
+- [Usage guide](docs/usage.md) -- how to browse, compare, and restore snapshots
+- [Configuration](docs/configuration.md) -- adjusting File Recovery settings
+- [Tips and troubleshooting](docs/tips.md) -- common questions and solutions
 
-- [Bun](https://bun.sh/) (latest version)
-- [Git](https://git-scm.com/)
-- An Obsidian vault for testing
+## Support
 
-### Commands
+Created by [Sebastien Dubois](https://dsebastien.net).
 
-| Command             | Description                       |
-| ------------------- | --------------------------------- |
-| `bun install`       | Install dependencies              |
-| `bun run dev`       | Development build with watch mode |
-| `bun run build`     | Production build                  |
-| `bun run tsc:watch` | Type check in watch mode          |
-| `bun run lint`      | Run ESLint                        |
-| `bun run format`    | Format with Prettier              |
-| `bun test`          | Run tests                         |
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
+If you find this plugin useful, consider [buying me a coffee](https://www.buymeacoffee.com/dsebastien) to support development.
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) for details.
-
-## News & Support
-
-<!-- TODO: Update these links with your own -->
-
-To stay up to date about this plugin, Obsidian in general, Personal Knowledge Management and note-taking, subscribe to [my newsletter](https://your-newsletter-url.com). Note that the best way to support my work is to become a paid subscriber ❤️.
+MIT

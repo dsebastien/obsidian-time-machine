@@ -3,5 +3,5 @@
 - [Overview](README.md)
 - [Usage](usage.md)
 - [Configuration](configuration.md)
-- [Tips](tips.md)
-- [Release Notes](release-notes.md)
+- [Tips and troubleshooting](tips.md)
+- [Release notes](release-notes.md)

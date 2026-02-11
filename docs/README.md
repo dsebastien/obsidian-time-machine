@@ -1,25 +1,30 @@
-# Plugin Name
+# Time Machine
 
-TODO: Add a brief description of what your plugin does.
+Browse, compare, and restore previous versions of your notes using Obsidian's built-in file-recovery snapshots.
 
-## Key Features
+## Key features
 
-TODO: List 3-5 key features of your plugin.
+- **Timeline slider** to scrub through snapshots of your notes
+- **Colored diff view** showing exactly what changed between a snapshot and your current file
+- **Selective restore** -- restore an entire version or just individual changes (hunks)
+- **Auto-updates** when you switch files -- no manual refresh needed
+- Works on **desktop and mobile**
 
-- Feature 1
-- Feature 2
-- Feature 3
+## Quick start
 
-## Quick Start
+1. Make sure the **File Recovery** core plugin is enabled in **Settings -> Core plugins**
+2. Install and enable Time Machine
+3. Open the command palette and run **Time Machine: Open view**
+4. The sidebar panel shows snapshots for the active file -- use the slider to browse them
 
-TODO: Add quick start instructions.
+## Prerequisites
 
-1. Install the plugin
-2. Configure settings
-3. Start using
+Time Machine reads snapshots created by Obsidian's built-in **File Recovery** core plugin. If File Recovery is disabled, Time Machine will show a message asking you to enable it.
+
+File Recovery creates snapshots automatically at a configurable interval (default: every 2 minutes). You can adjust this in **Settings -> Core plugins -> File Recovery**.
 
 ## About
 
-Created by [Your Name](https://your-website.com).
+Created by [Sebastien Dubois](https://dsebastien.net).
 
-TODO: Update author information and support links.
+[Buy me a coffee](https://www.buymeacoffee.com/dsebastien) to support development.

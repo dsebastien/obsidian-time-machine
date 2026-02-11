@@ -25,8 +25,8 @@ Time Machine is a sidebar ItemView plugin that reads backup snapshots from Obsid
 ### UI
 
 - **TimeMachineView**: ItemView in right sidebar, orchestrates components
-- **TimelineSliderComponent**: Range input slider (left=oldest, right=newest) with date labels and auto-select
-- **DiffViewerComponent**: Colored diff with per-hunk restore
+- **TimelineSliderComponent**: Range input slider (left=newest, right=oldest) with filled track, edge date labels, inline selected date display, auto-select newest; hidden when only one snapshot
+- **DiffViewerComponent**: Colored diff hunks with per-hunk restore buttons
 - **EmptyState**: Contextual empty messages
 - **ConfirmModal**: Confirmation for full restore only
 
@@ -34,9 +34,10 @@ Time Machine is a sidebar ItemView plugin that reads backup snapshots from Obsid
 
 1. File-open event → `updateForFile(file)`
 2. Fetch backups from IndexedDB via FileRecoveryService
-3. User scrubs timeline slider → compute diff (current vs selected snapshot) via DiffService
-4. Render diff in DiffViewerComponent
-5. User clicks restore → RestoreService modifies file via vault API
+3. Filter out snapshots identical to current file content
+4. User scrubs timeline slider → compute diff (current vs selected snapshot) via DiffService
+5. Render diff in DiffViewerComponent
+6. User clicks restore → RestoreService modifies file via vault API
 
 ## CSS
 
