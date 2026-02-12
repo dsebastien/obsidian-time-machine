@@ -8,9 +8,10 @@ The panel automatically displays snapshots for whichever file is currently activ
 
 ## Commands
 
-| Command                     | Description                                 |
-| --------------------------- | ------------------------------------------- |
-| **Time Machine: Open view** | Opens the Time Machine panel in the sidebar |
+| Command                                                         | Description                                                                                    |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Time Machine: Open view**                                     | Opens the Time Machine panel in the sidebar                                                    |
+| **Time Machine: Force file recovery snapshot for current file** | Immediately creates a File Recovery snapshot for the active file, bypassing the interval timer |
 
 ## Browsing snapshots
 

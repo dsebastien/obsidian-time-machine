@@ -16,6 +16,7 @@ Time Machine turns Obsidian's built-in File Recovery snapshots and git commits i
 - **Selective restore** -- restore just the specific changes you want, leaving the rest untouched
 - **Git integration** -- automatically shows git commits alongside File Recovery snapshots on the same timeline (desktop only)
 - **Source indicators** -- each snapshot shows whether it comes from File Recovery or a git commit
+- **On-demand snapshots** -- force-create a File Recovery snapshot whenever you want, without waiting for the timer
 - **Auto-sync** -- the view updates automatically when you switch between files
 - **Smart filtering** -- only shows snapshots that actually differ from your current content, with duplicates removed
 - **Desktop and mobile** -- works wherever Obsidian runs (git features are desktop-only)

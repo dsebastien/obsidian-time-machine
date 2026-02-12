@@ -10,7 +10,7 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 
 - Lifecycle management (onload/onunload)
 - Checks file-recovery availability
-- Registers view, commands, settings, file-open event
+- Registers view, commands (open view, force snapshot), settings, file-open event
 
 ### Services
 

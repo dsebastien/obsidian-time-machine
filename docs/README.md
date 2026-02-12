@@ -10,6 +10,7 @@ Browse, compare, and restore previous versions of your notes using Obsidian's bu
 - **Git integration** -- git commits appear alongside File Recovery snapshots on the same timeline (desktop only)
 - **Source indicators** -- each snapshot shows its origin (File Recovery or git commit with hash and message)
 - **Smart deduplication** -- identical snapshots across sources are merged, keeping only the most recent
+- **On-demand snapshots** -- force-create a File Recovery snapshot at any time via command
 - **Auto-updates** when you switch files -- no manual refresh needed
 - Works on **desktop and mobile** (git features are desktop-only)
 

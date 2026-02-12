@@ -4,6 +4,8 @@
 
 File Recovery's default snapshot interval is 2 minutes. If you want more granular history, reduce the interval in **Settings -> Core plugins -> File Recovery**. Keep in mind that shorter intervals use more storage.
 
+You can also use the **Time Machine: Force file recovery snapshot for current file** command to create a snapshot on demand, without waiting for the next interval. This is useful before making a large edit, so you have a restore point.
+
 If your vault is a git repository, committing frequently gives you additional snapshots on the timeline alongside File Recovery's automatic ones.
 
 ## Using hunk restore for selective undo

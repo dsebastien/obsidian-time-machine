@@ -27,6 +27,8 @@ interface FileRecoveryOptions {
 interface FileRecoveryPlugin {
     db: PromisifiedIDBDatabase
     options: FileRecoveryOptions
+    pendingFiles: Set<string>
+    forceAdd(path: string, data: string): Promise<void>
 }
 
 interface InternalPlugin {
