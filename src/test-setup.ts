@@ -43,6 +43,18 @@ void mock.module('obsidian', () => ({
         close() {}
     },
     WorkspaceLeaf: class WorkspaceLeaf {},
+    FileSystemAdapter: class FileSystemAdapter {
+        getBasePath() {
+            return ''
+        }
+    },
+    Platform: {
+        isDesktopApp: false,
+        isMobile: true,
+        isMobileApp: true,
+        isIosApp: false,
+        isAndroidApp: false
+    },
     debounce: (fn: (...args: unknown[]) => unknown) => fn,
     setIcon: () => {}
 }))

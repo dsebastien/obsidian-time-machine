@@ -1,10 +1,8 @@
 # Configuration
 
-## Prerequisites
+## File Recovery settings
 
-Time Machine requires the **File Recovery** core plugin to be enabled. This is the source of all snapshots.
-
-To configure File Recovery, go to **Settings -> Core plugins -> File Recovery** and adjust:
+Time Machine reads snapshots from the **File Recovery** core plugin. To configure it, go to **Settings -> Core plugins -> File Recovery** and adjust:
 
 | Setting           | Description                                      | Default   |
 | ----------------- | ------------------------------------------------ | --------- |
@@ -14,6 +12,17 @@ To configure File Recovery, go to **Settings -> Core plugins -> File Recovery** 
 
 ## Plugin settings
 
-Time Machine itself currently has no configurable settings. It works out of the box once File Recovery is enabled.
+Time Machine has the following settings, accessible via **Settings -> Community plugins -> Time Machine**:
 
-The settings tab provides links to follow the author and support the plugin.
+### Git integration
+
+| Setting                | Description                                                     | Default |
+| ---------------------- | --------------------------------------------------------------- | ------- |
+| Enable git integration | Show git commits as snapshots on the timeline (desktop only)    | On      |
+| Maximum git commits    | Maximum number of git commits to fetch per file (slider, 1-200) | 50      |
+
+**Note:** Git integration only works on the desktop app. On mobile, these settings have no effect and no git operations are attempted.
+
+When enabled, Time Machine automatically detects whether the vault is inside a git repository and, for each file, fetches its commit history. The git commits are merged with File Recovery snapshots into a single chronological timeline.
+
+The plugin never creates commits, pushes, pulls, or modifies the git repository in any way. It is strictly read-only.

@@ -2,8 +2,9 @@ import { describe, expect, test, beforeEach, mock, spyOn, afterEach } from 'bun:
 import type { TFile, WorkspaceLeaf } from 'obsidian'
 import { TimeMachineView } from './time-machine-view'
 import type { TimeMachinePlugin } from '../plugin'
-import type { FileRecoveryBackup } from '../types/backup.intf'
-import { FileRecoveryService } from '../services/file-recovery.service'
+import type { Snapshot } from '../types/snapshot.intf'
+import { SnapshotService } from '../services/snapshot.service'
+import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ViewInternals = any
@@ -38,13 +39,43 @@ function createMockFile(path: string, name?: string): TFile {
     return { path, name: name ?? path.split('/').pop() ?? path } as unknown as TFile
 }
 
-function createBackup(path: string, ts: number, data: string): FileRecoveryBackup {
-    return { path, ts, data }
+function createSnapshot(
+    path: string,
+    ts: number,
+    data: string,
+    source: 'file-recovery' | 'git' = 'file-recovery'
+): Snapshot {
+    if (source === 'git') {
+        return {
+            id: `git-hash${ts}`,
+            path,
+            ts,
+            data,
+            source: 'git',
+            metadata: {
+                source: 'git',
+                commitHash: `hash${ts}`,
+                shortHash: `h${ts}`,
+                commitMessage: `commit at ${ts}`,
+                authorName: 'Test Author'
+            }
+        }
+    }
+    return {
+        id: `fr-${ts}`,
+        path,
+        ts,
+        data,
+        source: 'file-recovery',
+        metadata: { source: 'file-recovery' }
+    }
 }
 
 function createView(): TimeMachineView {
     const mockLeaf = {} as WorkspaceLeaf
-    const mockPlugin = {} as TimeMachinePlugin
+    const mockPlugin = {
+        settings: { ...DEFAULT_SETTINGS }
+    } as TimeMachinePlugin
 
     const view = new TimeMachineView(mockLeaf, mockPlugin)
     const v: ViewInternals = view
@@ -71,12 +102,12 @@ function createView(): TimeMachineView {
 
 // Spy references for cleanup
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-let getBackupsSpy: ReturnType<typeof spyOn> | null = null
+let getSnapshotsSpy: ReturnType<typeof spyOn> | null = null
 
 afterEach(() => {
-    if (getBackupsSpy) {
-        getBackupsSpy.mockRestore()
-        getBackupsSpy = null
+    if (getSnapshotsSpy) {
+        getSnapshotsSpy.mockRestore()
+        getSnapshotsSpy = null
     }
 })
 
@@ -91,7 +122,7 @@ describe('TimeMachineView', () => {
             const view = createView()
             const file = createMockFile('test.md')
 
-            getBackupsSpy = spyOn(FileRecoveryService, 'getBackups').mockResolvedValue([])
+            getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([])
 
             await view.updateForFile(file)
             expect(view.getCurrentFile()).toBe(file)
@@ -101,7 +132,7 @@ describe('TimeMachineView', () => {
             const view = createView()
             const file = createMockFile('test.md')
 
-            getBackupsSpy = spyOn(FileRecoveryService, 'getBackups').mockResolvedValue([])
+            getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([])
 
             await view.updateForFile(file)
             await view.updateForFile(null)
@@ -110,73 +141,78 @@ describe('TimeMachineView', () => {
     })
 
     describe('updateForFile', () => {
-        test('caches all backups in allBackups before filtering', async () => {
+        test('caches all snapshots in allSnapshots before filtering', async () => {
             const view = createView()
             const v: ViewInternals = view
             const file = createMockFile('note.md')
             const currentContent = 'current content'
 
-            const backups = [
-                createBackup('note.md', 3000, 'old v3'),
-                createBackup('note.md', 2000, currentContent), // matches current — filtered out
-                createBackup('note.md', 1000, 'old v1')
+            const snapshots = [
+                createSnapshot('note.md', 3000, 'old v3'),
+                createSnapshot('note.md', 2000, currentContent), // matches current — filtered out
+                createSnapshot('note.md', 1000, 'old v1')
             ]
 
-            getBackupsSpy = spyOn(FileRecoveryService, 'getBackups').mockResolvedValue(backups)
+            getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue(snapshots)
             v.app.vault.read = mock(async () => currentContent)
 
             await view.updateForFile(file)
 
-            // allBackups should have all 3
-            const allBackups = v.allBackups as FileRecoveryBackup[]
-            expect(allBackups).toHaveLength(3)
+            // allSnapshots should have all 3
+            const allSnapshots = v.allSnapshots as Snapshot[]
+            expect(allSnapshots).toHaveLength(3)
 
-            // backups (filtered) should exclude the one matching current content
-            const filteredBackups = v.backups as FileRecoveryBackup[]
-            expect(filteredBackups).toHaveLength(2)
-            expect(
-                filteredBackups.every((b: FileRecoveryBackup) => b.data !== currentContent)
-            ).toBe(true)
+            // snapshots (filtered) should exclude the one matching current content
+            const filteredSnapshots = v.snapshots as Snapshot[]
+            expect(filteredSnapshots).toHaveLength(2)
+            expect(filteredSnapshots.every((s: Snapshot) => s.data !== currentContent)).toBe(true)
         })
 
-        test('clears allBackups when file is null', async () => {
+        test('clears allSnapshots when file is null', async () => {
             const view = createView()
             const v: ViewInternals = view
 
-            v.allBackups = [createBackup('x.md', 1000, 'data')]
-            v.backups = [createBackup('x.md', 1000, 'data')]
+            v.allSnapshots = [createSnapshot('x.md', 1000, 'data')]
+            v.snapshots = [createSnapshot('x.md', 1000, 'data')]
 
             await view.updateForFile(null)
 
-            expect(v.allBackups).toEqual([])
-            expect(v.backups).toEqual([])
+            expect(v.allSnapshots).toEqual([])
+            expect(v.snapshots).toEqual([])
         })
 
-        test('clears allBackups when file-recovery is unavailable', async () => {
-            const view = createView()
-            const v: ViewInternals = view
-            v.app.internalPlugins.getEnabledPluginById = () => null
-
-            v.allBackups = [createBackup('x.md', 1000, 'data')]
-
-            await view.updateForFile(createMockFile('test.md'))
-
-            expect(v.allBackups).toEqual([])
-            expect(v.backups).toEqual([])
-        })
-
-        test('sets allBackups to empty on fetch error', async () => {
+        test('sets allSnapshots to empty on fetch error', async () => {
             const view = createView()
             const v: ViewInternals = view
 
-            getBackupsSpy = spyOn(FileRecoveryService, 'getBackups').mockRejectedValue(
-                new Error('DB error')
+            getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockRejectedValue(
+                new Error('fetch error')
             )
 
             await view.updateForFile(createMockFile('test.md'))
 
-            expect(v.allBackups).toEqual([])
-            expect(v.backups).toEqual([])
+            expect(v.allSnapshots).toEqual([])
+            expect(v.snapshots).toEqual([])
+        })
+
+        test('handles mixed git and file-recovery snapshots', async () => {
+            const view = createView()
+            const v: ViewInternals = view
+            const file = createMockFile('note.md')
+
+            const snapshots = [
+                createSnapshot('note.md', 3000, 'git content', 'git'),
+                createSnapshot('note.md', 2000, 'fr content'),
+                createSnapshot('note.md', 1000, 'old git', 'git')
+            ]
+
+            getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue(snapshots)
+            v.app.vault.read = mock(async () => 'different content')
+
+            await view.updateForFile(file)
+
+            expect(v.allSnapshots).toHaveLength(3)
+            expect(v.snapshots).toHaveLength(3)
         })
     })
 
@@ -193,65 +229,65 @@ describe('TimeMachineView', () => {
 
         test('does nothing when no current file', async () => {
             v.currentFile = null
-            v.allBackups = [createBackup('x.md', 1000, 'data')]
+            v.allSnapshots = [createSnapshot('x.md', 1000, 'data')]
 
             await view.refreshCurrentContent()
 
             expect(vaultRead).not.toHaveBeenCalled()
         })
 
-        test('does nothing when allBackups is empty', async () => {
+        test('does nothing when allSnapshots is empty', async () => {
             v.currentFile = createMockFile('test.md')
-            v.allBackups = []
+            v.allSnapshots = []
 
             await view.refreshCurrentContent()
 
             expect(vaultRead).not.toHaveBeenCalled()
         })
 
-        test('re-filters allBackups against new content without IndexedDB fetch', async () => {
+        test('re-filters allSnapshots against new content without re-fetch', async () => {
             const file = createMockFile('note.md')
-            const allBackups = [
-                createBackup('note.md', 3000, 'version3'),
-                createBackup('note.md', 2000, 'version2'),
-                createBackup('note.md', 1000, 'version1')
+            const allSnapshots = [
+                createSnapshot('note.md', 3000, 'version3'),
+                createSnapshot('note.md', 2000, 'version2'),
+                createSnapshot('note.md', 1000, 'version1')
             ]
 
             v.currentFile = file
-            v.allBackups = allBackups
-            v.backups = [...allBackups] // Initially all 3 visible
-            v.selectedBackupIndex = null // No selection — count change triggers re-render
+            v.allSnapshots = allSnapshots
+            v.snapshots = [...allSnapshots] // Initially all 3 visible
+            v.selectedSnapshotIndex = null
 
             // Current content now matches version2 — should filter it out
             vaultRead.mockResolvedValue('version2')
 
-            getBackupsSpy = spyOn(FileRecoveryService, 'getBackups')
+            getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots')
 
             await view.refreshCurrentContent()
 
-            // Should NOT have called getBackups (no IndexedDB re-fetch)
-            expect(getBackupsSpy).not.toHaveBeenCalled()
+            // Should NOT have called getSnapshots (no re-fetch)
+            expect(getSnapshotsSpy).not.toHaveBeenCalled()
 
-            // allBackups unchanged
-            expect(v.allBackups).toHaveLength(3)
+            // allSnapshots unchanged
+            expect(v.allSnapshots).toHaveLength(3)
 
-            // Filtered backups should exclude the matching one
-            const filtered = v.backups as FileRecoveryBackup[]
+            // Filtered snapshots should exclude the matching one
+            const filtered = v.snapshots as Snapshot[]
             expect(filtered).toHaveLength(2)
-            expect(filtered.every((b: FileRecoveryBackup) => b.data !== 'version2')).toBe(true)
+            expect(filtered.every((s: Snapshot) => s.data !== 'version2')).toBe(true)
         })
 
         test('triggers full re-render when filtered count changes', async () => {
             const file = createMockFile('note.md')
-            const allBackups = [
-                createBackup('note.md', 2000, 'v2'),
-                createBackup('note.md', 1000, 'v1')
+            const allSnapshots = [
+                createSnapshot('note.md', 2000, 'v2'),
+                createSnapshot('note.md', 1000, 'v1')
             ]
 
             v.currentFile = file
-            v.allBackups = allBackups
-            v.backups = [...allBackups] // 2 visible
-            v.selectedBackupIndex = 1
+            v.allSnapshots = allSnapshots
+            v.snapshots = [...allSnapshots] // 2 visible
+            v.selectedSnapshotIndex = 1
 
             // Now content matches v1 — filtered count changes from 2 to 1
             vaultRead.mockResolvedValue('v1')
@@ -259,67 +295,67 @@ describe('TimeMachineView', () => {
             await view.refreshCurrentContent()
 
             // Only v2 remains after filtering
-            const filtered = v.backups as FileRecoveryBackup[]
+            const filtered = v.snapshots as Snapshot[]
             expect(filtered).toHaveLength(1)
             expect(filtered[0]!.data).toBe('v2')
         })
 
-        test('shows empty state when all backups match current content', async () => {
+        test('shows empty state when all snapshots match current content', async () => {
             const file = createMockFile('note.md')
             const contentAreaEl = v.contentAreaEl as HTMLElement & {
                 empty: ReturnType<typeof mock>
             }
 
             v.currentFile = file
-            v.allBackups = [createBackup('note.md', 1000, 'same')]
-            v.backups = [createBackup('note.md', 1000, 'same')]
+            v.allSnapshots = [createSnapshot('note.md', 1000, 'same')]
+            v.snapshots = [createSnapshot('note.md', 1000, 'same')]
 
-            // Content now matches the only backup
+            // Content now matches the only snapshot
             vaultRead.mockResolvedValue('same')
 
             await view.refreshCurrentContent()
 
-            expect(v.backups).toHaveLength(0)
+            expect(v.snapshots).toHaveLength(0)
             // empty() should have been called to clear before rendering empty state
             expect(contentAreaEl.empty).toHaveBeenCalled()
         })
 
-        test('does not reset selectedBackupIndex when count stays the same', async () => {
+        test('does not reset selectedSnapshotIndex when count stays the same', async () => {
             const file = createMockFile('note.md')
-            const allBackups = [
-                createBackup('note.md', 2000, 'v2'),
-                createBackup('note.md', 1000, 'v1')
+            const allSnapshots = [
+                createSnapshot('note.md', 2000, 'v2'),
+                createSnapshot('note.md', 1000, 'v1')
             ]
 
             v.currentFile = file
-            v.allBackups = allBackups
-            v.backups = [...allBackups]
-            v.selectedBackupIndex = 0
+            v.allSnapshots = allSnapshots
+            v.snapshots = [...allSnapshots]
+            v.selectedSnapshotIndex = 0
             v.diffViewer = null // No diff viewer to re-render
 
-            // Content is different from all backups — still 2 after filter
+            // Content is different from all snapshots — still 2 after filter
             vaultRead.mockResolvedValue('totally different')
 
             await view.refreshCurrentContent()
 
-            expect(v.selectedBackupIndex).toBe(0)
+            expect(v.selectedSnapshotIndex).toBe(0)
         })
     })
 
     describe('onClose', () => {
-        test('clears currentFile, allBackups, and backups', async () => {
+        test('clears currentFile, allSnapshots, and snapshots', async () => {
             const view = createView()
             const v: ViewInternals = view
 
             v.currentFile = createMockFile('test.md')
-            v.allBackups = [createBackup('test.md', 1000, 'data')]
-            v.backups = [createBackup('test.md', 1000, 'data')]
+            v.allSnapshots = [createSnapshot('test.md', 1000, 'data')]
+            v.snapshots = [createSnapshot('test.md', 1000, 'data')]
 
             await view.onClose()
 
             expect(v.currentFile).toBeNull()
-            expect(v.allBackups).toEqual([])
-            expect(v.backups).toEqual([])
+            expect(v.allSnapshots).toEqual([])
+            expect(v.snapshots).toEqual([])
         })
     })
 })

@@ -1,8 +1,10 @@
-import type { FileRecoveryBackup } from '../../types/backup.intf'
+import { setIcon } from 'obsidian'
+import type { GitMetadata, Snapshot } from '../../types/snapshot.intf'
 import { formatBackupDate, formatRelativeTime } from '../../domain/backup'
+import { formatSnapshotLabel } from '../../domain/snapshot'
 
 export interface TimelineSliderCallbacks {
-    onSelect: (backup: FileRecoveryBackup, index: number) => void
+    onSelect: (snapshot: Snapshot, index: number) => void
 }
 
 export class TimelineSliderComponent {
@@ -10,24 +12,25 @@ export class TimelineSliderComponent {
     private readonly callbacks: TimelineSliderCallbacks
     private selectedDateEl: HTMLElement | null = null
     private selectedRelativeEl: HTMLElement | null = null
-    private backups: FileRecoveryBackup[] = []
+    private sourceIndicatorEl: HTMLElement | null = null
+    private snapshots: Snapshot[] = []
 
     constructor(parent: HTMLElement, callbacks: TimelineSliderCallbacks) {
         this.container = parent.createDiv({ cls: 'tm-timeline-slider' })
         this.callbacks = callbacks
     }
 
-    render(backups: FileRecoveryBackup[]): void {
+    render(snapshots: Snapshot[]): void {
         this.container.empty()
-        this.backups = backups
+        this.snapshots = snapshots
 
-        if (backups.length === 0) {
+        if (snapshots.length === 0) {
             return
         }
 
         // Only show slider when there are multiple snapshots
-        if (backups.length > 1) {
-            const max = backups.length - 1
+        if (snapshots.length > 1) {
+            const max = snapshots.length - 1
 
             // Slider wrapper for the filled track effect
             const sliderWrap = this.container.createDiv({ cls: 'tm-timeline-slider-wrap' })
@@ -47,8 +50,8 @@ export class TimelineSliderComponent {
 
             // Edge labels row (newest left, oldest right)
             const edgeLabels = this.container.createDiv({ cls: 'tm-timeline-slider-edges' })
-            const newest = backups[0]
-            const oldest = backups[max]
+            const newest = snapshots[0]
+            const oldest = snapshots[max]
             if (newest) {
                 edgeLabels.createDiv({
                     cls: 'tm-timeline-slider-edge-label',
@@ -66,9 +69,9 @@ export class TimelineSliderComponent {
                 const sliderValue = parseInt(slider.value, 10)
                 this.updateTrackFill(slider, sliderValue, max)
                 this.updateSelectedDisplay(sliderValue)
-                const backup = this.backups[sliderValue]
-                if (backup) {
-                    this.callbacks.onSelect(backup, sliderValue)
+                const snapshot = this.snapshots[sliderValue]
+                if (snapshot) {
+                    this.callbacks.onSelect(snapshot, sliderValue)
                 }
             })
         }
@@ -84,11 +87,16 @@ export class TimelineSliderComponent {
             cls: 'tm-timeline-slider-selected-relative'
         })
 
+        // Source indicator (icon + label below the date)
+        this.sourceIndicatorEl = this.container.createDiv({
+            cls: 'tm-timeline-slider-selected-source'
+        })
+
         // Set initial display and auto-select newest
         this.updateSelectedDisplay(0)
-        const newestBackup = this.backups[0]
-        if (newestBackup) {
-            this.callbacks.onSelect(newestBackup, 0)
+        const newestSnapshot = this.snapshots[0]
+        if (newestSnapshot) {
+            this.callbacks.onSelect(newestSnapshot, 0)
         }
     }
 
@@ -98,14 +106,42 @@ export class TimelineSliderComponent {
     }
 
     private updateSelectedDisplay(sliderValue: number): void {
-        const backup = this.backups[sliderValue]
-        if (!backup) return
+        const snapshot = this.snapshots[sliderValue]
+        if (!snapshot) return
 
         if (this.selectedDateEl) {
-            this.selectedDateEl.textContent = formatBackupDate(backup.ts)
+            this.selectedDateEl.textContent = formatBackupDate(snapshot.ts)
         }
         if (this.selectedRelativeEl) {
-            this.selectedRelativeEl.textContent = formatRelativeTime(backup.ts)
+            this.selectedRelativeEl.textContent = formatRelativeTime(snapshot.ts)
+        }
+        if (this.sourceIndicatorEl) {
+            this.renderSourceIndicator(this.sourceIndicatorEl, snapshot)
+        }
+    }
+
+    private renderSourceIndicator(container: HTMLElement, snapshot: Snapshot): void {
+        container.empty()
+
+        const iconEl = container.createSpan({ cls: 'tm-timeline-slider-source-icon' })
+
+        if (snapshot.source === 'git') {
+            setIcon(iconEl, 'git-branch')
+            const meta = snapshot.metadata as GitMetadata
+            container.createSpan({
+                cls: 'tm-timeline-slider-source-label',
+                text: formatSnapshotLabel(snapshot)
+            })
+            container.createSpan({
+                cls: 'tm-timeline-slider-source-author',
+                text: meta.authorName
+            })
+        } else {
+            setIcon(iconEl, 'clock')
+            container.createSpan({
+                cls: 'tm-timeline-slider-source-label',
+                text: 'File recovery'
+            })
         }
     }
 }

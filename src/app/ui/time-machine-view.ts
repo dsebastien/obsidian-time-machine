@@ -1,21 +1,24 @@
 import { ItemView, Modal, type TFile, type WorkspaceLeaf } from 'obsidian'
 import { VIEW_TYPE, PLUGIN_NAME } from '../constants'
 import type { TimeMachinePlugin } from '../plugin'
-import type { FileRecoveryBackup } from '../types/backup.intf'
+import type { GitMetadata, Snapshot } from '../types/snapshot.intf'
 import type { DiffResult } from '../types/diff.intf'
 import { FileRecoveryService } from '../services/file-recovery.service'
+import { SnapshotService } from '../services/snapshot.service'
 import { DiffService } from '../services/diff.service'
 import { RestoreService } from '../services/restore.service'
 import { renderEmptyState } from './components/empty-state'
 import { TimelineSliderComponent } from './components/timeline-slider'
 import { DiffViewerComponent } from './components/diff-viewer'
+import { formatBackupDate } from '../domain/backup'
 import { log } from '../../utils/log'
 
 export class TimeMachineView extends ItemView {
+    private readonly plugin: TimeMachinePlugin
     private currentFile: TFile | null = null
-    private allBackups: FileRecoveryBackup[] = []
-    private backups: FileRecoveryBackup[] = []
-    private selectedBackupIndex: number | null = null
+    private allSnapshots: Snapshot[] = []
+    private snapshots: Snapshot[] = []
+    private selectedSnapshotIndex: number | null = null
 
     // UI component references
     private headerEl!: HTMLElement
@@ -24,8 +27,9 @@ export class TimeMachineView extends ItemView {
 
     override navigation = false
 
-    constructor(leaf: WorkspaceLeaf, _plugin: TimeMachinePlugin) {
+    constructor(leaf: WorkspaceLeaf, plugin: TimeMachinePlugin) {
         super(leaf)
+        this.plugin = plugin
     }
 
     override getViewType(): string {
@@ -65,53 +69,54 @@ export class TimeMachineView extends ItemView {
 
     override async onClose(): Promise<void> {
         this.currentFile = null
-        this.allBackups = []
-        this.backups = []
+        this.allSnapshots = []
+        this.snapshots = []
     }
 
     async updateForFile(file: TFile | null): Promise<void> {
         if (!file) {
             this.currentFile = null
-            this.allBackups = []
-            this.backups = []
+            this.allSnapshots = []
+            this.snapshots = []
             this.renderHeader(null)
             renderEmptyState(this.contentAreaEl, 'no-file')
             return
         }
 
-        if (!FileRecoveryService.isAvailable(this.app)) {
-            this.currentFile = null
-            this.allBackups = []
-            this.backups = []
-            this.renderHeader(null)
-            renderEmptyState(this.contentAreaEl, 'file-recovery-disabled')
-            return
-        }
-
         this.currentFile = file
-        this.selectedBackupIndex = null
+        this.selectedSnapshotIndex = null
 
         try {
-            this.allBackups = await FileRecoveryService.getBackups(this.app, file.path)
+            this.allSnapshots = await SnapshotService.getSnapshots(
+                this.app,
+                file.path,
+                this.plugin.settings
+            )
         } catch (error) {
-            log('Failed to fetch backups', 'error', error)
-            this.allBackups = []
+            log('Failed to fetch snapshots', 'error', error)
+            this.allSnapshots = []
         }
 
-        if (this.allBackups.length === 0) {
-            this.backups = []
+        if (this.allSnapshots.length === 0) {
+            this.snapshots = []
             this.renderHeader(file)
-            renderEmptyState(this.contentAreaEl, 'no-snapshots')
+
+            // Determine appropriate empty state
+            if (!FileRecoveryService.isAvailable(this.app)) {
+                renderEmptyState(this.contentAreaEl, 'file-recovery-disabled')
+            } else {
+                renderEmptyState(this.contentAreaEl, 'no-snapshots')
+            }
             return
         }
 
         // Filter out snapshots identical to current file content
         const currentContent = await this.app.vault.read(file)
-        this.backups = this.allBackups.filter((backup) => backup.data !== currentContent)
+        this.snapshots = this.allSnapshots.filter((snapshot) => snapshot.data !== currentContent)
 
         this.renderHeader(file)
 
-        if (this.backups.length === 0) {
+        if (this.snapshots.length === 0) {
             renderEmptyState(this.contentAreaEl, 'no-snapshots')
             return
         }
@@ -120,28 +125,28 @@ export class TimeMachineView extends ItemView {
     }
 
     /**
-     * Lightweight refresh for file content changes (no IndexedDB re-fetch).
-     * Re-filters cached backups against current content and re-renders as needed.
+     * Lightweight refresh for file content changes (no re-fetch from sources).
+     * Re-filters cached snapshots against current content and re-renders as needed.
      */
     async refreshCurrentContent(): Promise<void> {
-        if (!this.currentFile || this.allBackups.length === 0) return
+        if (!this.currentFile || this.allSnapshots.length === 0) return
 
         const currentContent = await this.app.vault.read(this.currentFile)
-        const previousCount = this.backups.length
-        this.backups = this.allBackups.filter((backup) => backup.data !== currentContent)
+        const previousCount = this.snapshots.length
+        this.snapshots = this.allSnapshots.filter((snapshot) => snapshot.data !== currentContent)
 
-        if (this.backups.length !== previousCount) {
+        if (this.snapshots.length !== previousCount) {
             // Filtered set changed — full content re-render
-            this.selectedBackupIndex = null
+            this.selectedSnapshotIndex = null
             this.renderHeader(this.currentFile)
 
-            if (this.backups.length === 0) {
+            if (this.snapshots.length === 0) {
                 renderEmptyState(this.contentAreaEl, 'no-snapshots')
                 return
             }
 
             this.renderContent()
-        } else if (this.selectedBackupIndex !== null) {
+        } else if (this.selectedSnapshotIndex !== null) {
             // Same snapshots, just re-compute the diff against new content
             await this.computeAndRenderDiff()
         }
@@ -158,7 +163,7 @@ export class TimeMachineView extends ItemView {
         this.headerEl.createDiv({ cls: 'tm-header-file', text: file.name })
         this.headerEl.createDiv({
             cls: 'tm-header-count',
-            text: `${this.backups.length} snapshot${this.backups.length === 1 ? '' : 's'}`
+            text: `${this.snapshots.length} snapshot${this.snapshots.length === 1 ? '' : 's'}`
         })
     }
 
@@ -166,11 +171,11 @@ export class TimeMachineView extends ItemView {
         this.contentAreaEl.empty()
 
         new TimelineSliderComponent(this.contentAreaEl, {
-            onSelect: (_backup, index) => {
-                this.selectedBackupIndex = index
+            onSelect: (_snapshot, index) => {
+                this.selectedSnapshotIndex = index
                 void this.computeAndRenderDiff()
             }
-        }).render(this.backups)
+        }).render(this.snapshots)
 
         const diffContainer = this.contentAreaEl.createDiv({ cls: 'tm-diff-container' })
         this.diffViewer = new DiffViewerComponent(diffContainer, {
@@ -184,51 +189,61 @@ export class TimeMachineView extends ItemView {
     }
 
     private async computeAndRenderDiff(): Promise<void> {
-        if (!this.diffViewer || this.selectedBackupIndex === null) return
+        if (!this.diffViewer || this.selectedSnapshotIndex === null) return
 
-        const backup = this.backups[this.selectedBackupIndex]
-        if (!backup || !this.currentFile) return
+        const snapshot = this.snapshots[this.selectedSnapshotIndex]
+        if (!snapshot || !this.currentFile) return
 
         const currentContent = await this.app.vault.read(this.currentFile)
+
+        const oldLabel = this.formatDiffLabel(snapshot)
         const diff: DiffResult = DiffService.computeDiff(
-            backup.data,
+            snapshot.data,
             currentContent,
-            `Snapshot (${new Date(backup.ts).toLocaleString()})`,
+            oldLabel,
             'Current'
         )
 
         this.diffViewer.render(diff)
     }
 
-    private async handleRestoreFullVersion(): Promise<void> {
-        if (this.selectedBackupIndex === null || !this.currentFile) return
+    private formatDiffLabel(snapshot: Snapshot): string {
+        if (snapshot.source === 'git') {
+            const meta = snapshot.metadata as GitMetadata
+            return `Commit ${meta.shortHash} (${formatBackupDate(snapshot.ts)})`
+        }
+        return `Snapshot (${new Date(snapshot.ts).toLocaleString()})`
+    }
 
-        const backup = this.backups[this.selectedBackupIndex]
-        if (!backup) return
+    private async handleRestoreFullVersion(): Promise<void> {
+        if (this.selectedSnapshotIndex === null || !this.currentFile) return
+
+        const snapshot = this.snapshots[this.selectedSnapshotIndex]
+        if (!snapshot) return
 
         const confirmed = await this.showConfirmDialog(
             'Restore version',
-            `Are you sure you want to restore this file to the snapshot from ${new Date(backup.ts).toLocaleString()}? The current content will be replaced.`
+            `Are you sure you want to restore this file to the snapshot from ${new Date(snapshot.ts).toLocaleString()}? The current content will be replaced.`
         )
 
         if (confirmed) {
-            await RestoreService.restoreFullVersion(this.app, this.currentFile, backup.data)
+            await RestoreService.restoreFullVersion(this.app, this.currentFile, snapshot.data)
             await this.updateForFile(this.currentFile)
         }
     }
 
     private async handleRestoreHunk(hunkIndex: number): Promise<void> {
-        if (this.selectedBackupIndex === null || !this.currentFile) return
+        if (this.selectedSnapshotIndex === null || !this.currentFile) return
 
-        const backup = this.backups[this.selectedBackupIndex]
-        if (!backup) return
+        const snapshot = this.snapshots[this.selectedSnapshotIndex]
+        if (!snapshot) return
 
         const currentContent = await this.app.vault.read(this.currentFile)
         const success = await RestoreService.restoreHunk(
             this.app,
             this.currentFile,
             currentContent,
-            backup.data,
+            snapshot.data,
             hunkIndex
         )
 

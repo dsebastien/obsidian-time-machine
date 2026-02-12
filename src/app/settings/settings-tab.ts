@@ -13,8 +13,39 @@ export class TimeMachineSettingTab extends PluginSettingTab {
         const { containerEl } = this
         containerEl.empty()
 
+        this.renderGitSettings(containerEl)
         this.renderFollowButton(containerEl)
         this.renderSupportHeader(containerEl)
+    }
+
+    renderGitSettings(containerEl: HTMLElement): void {
+        new Setting(containerEl).setName('Git integration').setHeading()
+
+        new Setting(containerEl)
+            .setName('Enable git integration')
+            .setDesc('Show git commits as snapshots on the timeline (desktop only)')
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.gitIntegrationEnabled)
+                    .onChange(async (value) => {
+                        this.plugin.settings.gitIntegrationEnabled = value
+                        await this.plugin.saveSettings()
+                    })
+            })
+
+        new Setting(containerEl)
+            .setName('Maximum git commits')
+            .setDesc('Maximum number of git commits to fetch per file (1-200)')
+            .addSlider((slider) => {
+                slider
+                    .setLimits(1, 200, 1)
+                    .setValue(this.plugin.settings.gitMaxCommits)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.gitMaxCommits = value
+                        await this.plugin.saveSettings()
+                    })
+            })
     }
 
     renderFollowButton(containerEl: HTMLElement): void {

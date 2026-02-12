@@ -25,7 +25,7 @@ export function renderEmptyState(container: HTMLElement, reason: EmptyStateReaso
             })
             wrapper.createEl('p', {
                 cls: 'tm-empty-state-hint',
-                text: 'Snapshots are created automatically by the File Recovery core plugin'
+                text: 'Snapshots are created by File Recovery and git commits'
             })
             break
         }

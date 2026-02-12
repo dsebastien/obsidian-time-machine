@@ -256,6 +256,30 @@
         color: var(--text-faint);
     }
 
+    /* --- Source indicator --- */
+    .tm-timeline-slider-selected-source {
+        @apply flex items-center justify-center gap-1.5;
+    }
+
+    .tm-timeline-slider-source-icon {
+        @apply inline-flex shrink-0;
+    }
+
+    .tm-timeline-slider-source-icon svg {
+        @apply w-3 h-3;
+        color: var(--text-faint);
+    }
+
+    .tm-timeline-slider-source-label {
+        @apply text-xs truncate;
+        color: var(--text-muted);
+    }
+
+    .tm-timeline-slider-source-author {
+        @apply text-xs truncate;
+        color: var(--text-faint);
+    }
+
     /* ========================================
        TIME MACHINE - DIFF VIEWER
        ======================================== */
