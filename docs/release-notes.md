@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.3.0 (2026-02-12)
+
+### Features
+
+- **all:** added git support (desktop only)
+
 ## 0.2.0 (2026-02-11)
 
 ### Features

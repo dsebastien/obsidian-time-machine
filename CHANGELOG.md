@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0](https://github.com/dsebastien/obsidian-time-machine/compare/0.2.0...0.3.0) (2026-02-12)
+
+### Features
+
+* **all:** added git support (desktop only) ([b447efa](https://github.com/dsebastien/obsidian-time-machine/commit/b447efab4b2636fcc04033f8bec697175fb7c59a))
+
 ## [0.2.0](https://github.com/dsebastien/obsidian-time-machine/compare/0.1.0...0.2.0) (2026-02-11)
 
 ### Features
@@ -67,6 +73,7 @@ All notable changes to this project will be documented in this file.
 ## [1.2.0](https://github.com/your-username/obsidian-my-plugin/compare/1.1.0...1.2.0) (2024-05-14)
 ## [1.1.0](https://github.com/your-username/obsidian-my-plugin/compare/1.0.0...1.1.0) (2024-05-13)
 ## 1.0.0 (2024-04-26)
+
 
 
 
