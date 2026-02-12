@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.4.0 (2026-02-12)
+
+### Features
+
+- **all:** added command to force the creation of a snapshot using file recovery
+
 ## 0.3.0 (2026-02-12)
 
 ### Features
