@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.5.0 (2026-02-13)
+
+### Features
+
+- **all:** made the diffs selectable
+
 ## 0.4.0 (2026-02-12)
 
 ### Features
