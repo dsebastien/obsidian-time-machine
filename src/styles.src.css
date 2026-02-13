@@ -348,7 +348,7 @@
     }
 
     .tm-diff-lines {
-        @apply text-xs overflow-x-auto;
+        @apply text-xs overflow-x-auto select-text;
         font-family: var(--font-monospace);
     }
 
@@ -375,7 +375,7 @@
     }
 
     .tm-diff-line-content {
-        @apply whitespace-pre-wrap break-all;
+        @apply whitespace-pre-wrap break-all select-text cursor-text;
     }
 
     /* ========================================
