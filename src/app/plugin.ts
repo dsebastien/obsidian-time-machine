@@ -26,25 +26,16 @@ export class TimeMachinePlugin extends Plugin {
 
         this.registerEvent(
             this.app.workspace.on('file-open', (file) => {
-                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
-                for (const leaf of leaves) {
-                    const view = leaf.view as TimeMachineView
-                    if (view.getViewType() === VIEW_TYPE) {
-                        void view.updateForFile(file)
-                    }
+                for (const view of this.getActiveViews()) {
+                    void view.updateForFile(file)
                 }
             })
         )
 
-        // Refresh view when the currently-viewed file is modified
         const debouncedRefresh = debounce(
             () => {
-                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
-                for (const leaf of leaves) {
-                    const view = leaf.view as TimeMachineView
-                    if (view.getViewType() === VIEW_TYPE) {
-                        void view.refreshCurrentContent()
-                    }
+                for (const view of this.getActiveViews()) {
+                    void view.refreshCurrentContent()
                 }
             },
             1000,
@@ -53,13 +44,8 @@ export class TimeMachinePlugin extends Plugin {
 
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
-                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
-                for (const leaf of leaves) {
-                    const view = leaf.view as TimeMachineView
-                    if (
-                        view.getViewType() === VIEW_TYPE &&
-                        view.getCurrentFile()?.path === file.path
-                    ) {
+                for (const view of this.getActiveViews()) {
+                    if (view.getCurrentFile()?.path === file.path) {
                         debouncedRefresh()
                         return
                     }
@@ -67,22 +53,27 @@ export class TimeMachinePlugin extends Plugin {
             })
         )
 
-        // Periodically re-fetch snapshots from IndexedDB at the file-recovery interval
         const snapshotIntervalMs = FileRecoveryService.getSnapshotIntervalMs(this.app)
         log(`Snapshot poll interval: ${snapshotIntervalMs / 1000}s`, 'debug')
         this.registerInterval(
             window.setInterval(() => {
-                const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE)
-                for (const leaf of leaves) {
-                    const view = leaf.view as TimeMachineView
-                    if (view.getViewType() === VIEW_TYPE && view.getCurrentFile()) {
-                        void view.updateForFile(view.getCurrentFile())
+                for (const view of this.getActiveViews()) {
+                    const currentFile = view.getCurrentFile()
+                    if (currentFile) {
+                        void view.updateForFile(currentFile)
                     }
                 }
             }, snapshotIntervalMs)
         )
 
         this.addSettingTab(new TimeMachineSettingTab(this.app, this))
+    }
+
+    private getActiveViews(): TimeMachineView[] {
+        return this.app.workspace
+            .getLeavesOfType(VIEW_TYPE)
+            .map((leaf) => leaf.view)
+            .filter((view): view is TimeMachineView => view instanceof TimeMachineView)
     }
 
     override onunload(): void {

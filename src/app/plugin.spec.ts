@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach, mock, afterEach } from 'bun:test'
 import { TimeMachinePlugin } from './plugin'
+import { TimeMachineView } from './ui/time-machine-view'
 import { VIEW_TYPE } from './constants'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -10,7 +11,7 @@ let registeredEvents: Array<{ type: string; callback: (...args: unknown[]) => vo
 let registeredIntervals: number[] = []
 let setIntervalCalls: Array<{ callback: () => void; ms: number }> = []
 
-// Mock view factory
+// Mock view factory — creates objects that pass `instanceof TimeMachineView`
 function createMockView(currentFilePath: string | null): {
     view: Record<string, unknown>
     updateForFile: ReturnType<typeof mock>
@@ -18,13 +19,12 @@ function createMockView(currentFilePath: string | null): {
 } {
     const updateForFile = mock(async () => {})
     const refreshCurrentContent = mock(async () => {})
-    const view = {
-        getViewType: () => VIEW_TYPE,
-        getCurrentFile: () =>
-            currentFilePath ? { path: currentFilePath, name: currentFilePath } : null,
-        updateForFile,
-        refreshCurrentContent
-    }
+    const view = Object.create(TimeMachineView.prototype) as Record<string, unknown>
+    view['getViewType'] = () => VIEW_TYPE
+    view['getCurrentFile'] = () =>
+        currentFilePath ? { path: currentFilePath, name: currentFilePath } : null
+    view['updateForFile'] = updateForFile
+    view['refreshCurrentContent'] = refreshCurrentContent
     return { view, updateForFile, refreshCurrentContent }
 }
 
