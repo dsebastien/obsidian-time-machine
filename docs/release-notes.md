@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.5.1 (2026-02-21)
+
+### Bug Fixes
+
+- **all:** fixed bug
+
 ## 0.5.0 (2026-02-13)
 
 ### Features

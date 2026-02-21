@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1](https://github.com/dsebastien/obsidian-time-machine/compare/0.5.0...0.5.1) (2026-02-21)
+
+### Bug Fixes
+
+* **all:** fixed bug ([498818c](https://github.com/dsebastien/obsidian-time-machine/commit/498818c5c362c67257df7fcb91b3235d720e3382))
+
 ## [0.5.0](https://github.com/dsebastien/obsidian-time-machine/compare/0.4.0...0.5.0) (2026-02-13)
 
 ### Features
@@ -85,6 +91,7 @@ All notable changes to this project will be documented in this file.
 ## [1.2.0](https://github.com/your-username/obsidian-my-plugin/compare/1.1.0...1.2.0) (2024-05-14)
 ## [1.1.0](https://github.com/your-username/obsidian-my-plugin/compare/1.0.0...1.1.0) (2024-05-13)
 ## 1.0.0 (2024-04-26)
+
 
 
 
