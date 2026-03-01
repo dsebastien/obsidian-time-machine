@@ -73,7 +73,10 @@ export class TimeMachinePlugin extends Plugin {
         return this.app.workspace
             .getLeavesOfType(VIEW_TYPE)
             .map((leaf) => leaf.view)
-            .filter((view): view is TimeMachineView => view instanceof TimeMachineView)
+            .filter(
+                (view): view is TimeMachineView =>
+                    view instanceof TimeMachineView && typeof view.getCurrentFile === 'function'
+            )
     }
 
     override onunload(): void {
