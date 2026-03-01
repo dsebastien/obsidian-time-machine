@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2](https://github.com/dsebastien/obsidian-time-machine/compare/0.5.1...0.5.2) (2026-03-01)
+
+### Bug Fixes
+
+* **all:** fixed error with uninitialized iew ([bc136bd](https://github.com/dsebastien/obsidian-time-machine/commit/bc136bd91ed975ccdd4997508a3bc1834a3cb633))
+
 ## [0.5.1](https://github.com/dsebastien/obsidian-time-machine/compare/0.5.0...0.5.1) (2026-02-21)
 
 ### Bug Fixes
@@ -91,6 +97,7 @@ All notable changes to this project will be documented in this file.
 ## [1.2.0](https://github.com/your-username/obsidian-my-plugin/compare/1.1.0...1.2.0) (2024-05-14)
 ## [1.1.0](https://github.com/your-username/obsidian-my-plugin/compare/1.0.0...1.1.0) (2024-05-13)
 ## 1.0.0 (2024-04-26)
+
 
 
 

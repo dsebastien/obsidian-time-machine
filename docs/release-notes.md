@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.5.2 (2026-03-01)
+
+### Bug Fixes
+
+- **all:** fixed error with uninitialized iew
+
 ## 0.5.1 (2026-02-21)
 
 ### Bug Fixes
