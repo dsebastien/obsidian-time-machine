@@ -1,3 +1,8 @@
+---
+title: Usage
+nav_order: 2
+---
+
 # Usage
 
 ## Opening the view

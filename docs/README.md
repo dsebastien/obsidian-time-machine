@@ -1,3 +1,9 @@
+---
+title: Overview
+nav_order: 1
+permalink: /
+---
+
 # Time Machine
 
 Browse, compare, and restore previous versions of your notes using Obsidian's built-in file-recovery snapshots and git commits.
