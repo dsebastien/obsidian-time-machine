@@ -1,5 +1,6 @@
-import { type App, PluginSettingTab, Setting } from 'obsidian'
+import { type App, Platform, PluginSettingTab, Setting } from 'obsidian'
 import type TimeMachinePlugin from '../../main'
+import { GitService } from '../services/git.service'
 
 export class TimeMachineSettingTab extends PluginSettingTab {
     plugin: TimeMachinePlugin
@@ -33,6 +34,8 @@ export class TimeMachineSettingTab extends PluginSettingTab {
                     })
             })
 
+        this.renderGitStatus(containerEl)
+
         new Setting(containerEl)
             .setName('Maximum git commits')
             .setDesc('Maximum number of git commits to fetch per file (1-200)')
@@ -45,6 +48,35 @@ export class TimeMachineSettingTab extends PluginSettingTab {
                         this.plugin.settings.gitMaxCommits = value
                         await this.plugin.saveSettings()
                     })
+            })
+    }
+
+    renderGitStatus(containerEl: HTMLElement): void {
+        const statusSetting = new Setting(containerEl)
+            .setName('Git status')
+            .setDesc('Checking git availability...')
+
+        if (!Platform.isDesktopApp) {
+            statusSetting.setDesc(
+                'Git integration is desktop-only and is unavailable on this platform.'
+            )
+            return
+        }
+
+        GitService.isAvailable(this.app)
+            .then((available) => {
+                if (available) {
+                    statusSetting.setDesc(
+                        'Git repository detected. Git snapshots will appear on the timeline.'
+                    )
+                } else {
+                    statusSetting.setDesc(
+                        'Git not detected for this vault. Ensure git is installed and the vault is inside a git repository to see git snapshots.'
+                    )
+                }
+            })
+            .catch(() => {
+                statusSetting.setDesc('Could not determine git availability.')
             })
     }
 
