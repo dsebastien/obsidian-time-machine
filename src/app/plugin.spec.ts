@@ -71,7 +71,7 @@ function createPlugin(
     p.addCommand = mock(() => {})
     p.addSettingTab = mock(() => {})
     p.loadData = mock(async () => null)
-    p.manifest = { id: 'obsidian-time-machine', name: 'Time Machine' }
+    p.manifest = { id: 'time-machine', name: 'Time Machine' }
 
     return plugin
 }

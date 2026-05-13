@@ -1,7 +1,7 @@
 {
-    "name": "obsidian-time-machine",
+    "name": "time-machine",
     "version": "0.6.0",
-    "description": "Browse, compare, and restore previous versions of your notes using Obsidian's built-in file-recovery snapshots",
+    "description": "Browse, compare, and restore previous versions of your notes using built-in file-recovery snapshots.",
     "author": {
         "name": "Sébastien Dubois",
         "url": "https://dsebastien.net"
@@ -52,7 +52,6 @@
         "release:update-version": "bun scripts/update-version.ts",
         "release:version-bump": "bun scripts/version-bump.ts",
         "release:changelog": "bun scripts/generate-changelog.ts",
-        "release:zip": "bun scripts/create-release-zip.ts",
         "release": "./scripts/release.sh",
         "validate": "bun run --parallel tsc test lint"
     },
