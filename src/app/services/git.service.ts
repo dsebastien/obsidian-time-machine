@@ -174,38 +174,38 @@ export class GitService {
     }
 
     /**
-     * Executes a git command and returns stdout.
-     * Uses dynamic require to avoid bundling issues on mobile.
+     * Executes a git command and returns stdout. Loads `child_process` lazily
+     * via dynamic import so the module is only resolved on desktop, where the
+     * `Platform.isDesktopApp` guard upstream has already let us through.
      */
-    private static exec(args: string[], cwd: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            try {
-                // Dynamic require to avoid bundling child_process on mobile
-                // eslint-disable-next-line import/no-nodejs-modules
-                const { execFile } = require('child_process') as typeof import('child_process')
+    private static async exec(args: string[], cwd: string): Promise<string> {
+        let cp: typeof import('node:child_process')
+        try {
+            cp = await import('node:child_process')
+        } catch (error) {
+            log('child_process not available', 'debug')
+            throw error instanceof Error ? error : new Error(String(error))
+        }
 
-                execFile(
-                    'git',
-                    args,
-                    {
-                        cwd,
-                        timeout: GIT_TIMEOUT_MS,
-                        maxBuffer: GIT_MAX_BUFFER,
-                        encoding: 'utf-8'
-                    },
-                    (error: Error | null, stdout: string, stderr: string) => {
-                        if (error) {
-                            log(`git ${args[0]} failed: ${stderr || error.message}`, 'debug')
-                            reject(error)
-                            return
-                        }
-                        resolve(stdout)
+        return new Promise((resolve, reject) => {
+            cp.execFile(
+                'git',
+                args,
+                {
+                    cwd,
+                    timeout: GIT_TIMEOUT_MS,
+                    maxBuffer: GIT_MAX_BUFFER,
+                    encoding: 'utf-8'
+                },
+                (error: Error | null, stdout: string, stderr: string) => {
+                    if (error) {
+                        log(`git ${args[0]} failed: ${stderr || error.message}`, 'debug')
+                        reject(error)
+                        return
                     }
-                )
-            } catch (error) {
-                log('child_process not available', 'debug')
-                reject(error instanceof Error ? error : new Error(String(error)))
-            }
+                    resolve(stdout)
+                }
+            )
         })
     }
 

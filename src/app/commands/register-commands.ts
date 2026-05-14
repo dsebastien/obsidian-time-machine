@@ -4,7 +4,7 @@ import { FileRecoveryService } from '../services/file-recovery.service'
 
 export function registerCommands(plugin: TimeMachinePlugin): void {
     plugin.addCommand({
-        id: 'open-time-machine',
+        id: 'open-view',
         name: 'Open view',
         callback: () => {
             void plugin.activateView()

@@ -39,6 +39,11 @@ export default tseslint.config(
         },
         rules: {
             '@typescript-eslint/no-require-imports': 'off',
+            // git.service.ts pulls in 'node:child_process' via a guarded dynamic import;
+            // the plugin is not isDesktopOnly so obsidianmd's preset turns this rule on.
+            // Inline `eslint-disable` for it is rejected by the catalog reviewer, so we
+            // disable it at config level instead.
+            'import/no-nodejs-modules': 'off',
             '@typescript-eslint/no-explicit-any': 'warn',
             '@typescript-eslint/no-unused-vars': [
                 'error',
