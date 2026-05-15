@@ -99,8 +99,6 @@
         @apply block cursor-pointer;
         -webkit-appearance: none;
         appearance: none;
-        /* Override Obsidian's input[type='range'] { width: 100px } */
-        width: 100% !important;
         min-width: 0;
         max-width: none;
         /* Height matches thumb so it stays vertically centered */
@@ -112,6 +110,13 @@
         background: transparent;
         box-sizing: border-box;
         --slider-progress: 0%;
+    }
+
+    /* Doubled-class selector (specificity 0,2,0) beats Obsidian's
+       `input[type='range']` default of `width: 100px` (specificity 0,1,1)
+       without needing `!important`. */
+    .tm-timeline-slider-input.tm-timeline-slider-input {
+        width: 100%;
     }
 
     /* --- WebKit track (Chrome, Safari, Edge) --- */

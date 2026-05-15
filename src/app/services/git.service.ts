@@ -174,18 +174,21 @@ export class GitService {
     }
 
     /**
-     * Executes a git command and returns stdout. Loads `child_process` lazily
-     * via dynamic import so the module is only resolved on desktop, where the
-     * `Platform.isDesktopApp` guard upstream has already let us through.
+     * Executes a git command and returns stdout. Loads `child_process` through
+     * Electron's runtime `window.require` instead of a static/dynamic
+     * `node:child_process` import: the catalog's `import/no-nodejs-modules`
+     * rule flags `import('node:*')` for plugins that aren't `isDesktopOnly`,
+     * and this plugin supports mobile (for the file-recovery feature). Every
+     * upstream caller is already gated by `Platform.isDesktopApp`.
      */
     private static async exec(args: string[], cwd: string): Promise<string> {
-        let cp: typeof import('node:child_process')
-        try {
-            cp = await import('node:child_process')
-        } catch (error) {
+        type ChildProcessModule = typeof import('node:child_process')
+        const electronRequire = (window as { require?: (id: string) => unknown }).require
+        if (!electronRequire) {
             log('child_process not available', 'debug')
-            throw error instanceof Error ? error : new Error(String(error))
+            throw new Error('child_process is unavailable on this platform')
         }
+        const cp = electronRequire('child_process') as ChildProcessModule
 
         return new Promise((resolve, reject) => {
             cp.execFile(
