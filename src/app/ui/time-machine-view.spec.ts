@@ -81,7 +81,7 @@ function createView(): TimeMachineView {
     const v: ViewInternals = view
 
     // Set up internal DOM elements that onOpen would create
-    v.headerEl = createMockEl()
+    v.tmHeaderEl = createMockEl()
     v.contentAreaEl = createMockEl()
 
     // Set up app mock

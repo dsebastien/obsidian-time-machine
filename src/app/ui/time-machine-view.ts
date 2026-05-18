@@ -20,8 +20,11 @@ export class TimeMachineView extends ItemView {
     private snapshots: Snapshot[] = []
     private selectedSnapshotIndex: number | null = null
 
-    // UI component references
-    private headerEl!: HTMLElement
+    // Do NOT rename to `headerEl` — it collides with `ItemView.headerEl`. A bare
+    // class field emits as `this.headerEl = undefined` after `super()` and
+    // wipes out Obsidian's element. The pane-relief plugin then crashes on view
+    // open when its patched `ItemView.load` calls `this.headerEl.createDiv(...)`.
+    private tmHeaderEl!: HTMLElement
     private contentAreaEl!: HTMLElement
     private diffViewer: DiffViewerComponent | null = null
 
@@ -56,7 +59,7 @@ export class TimeMachineView extends ItemView {
         const root = container as HTMLElement
         root.addClass('tm-root')
 
-        this.headerEl = root.createDiv({ cls: 'tm-header' })
+        this.tmHeaderEl = root.createDiv({ cls: 'tm-header' })
         this.contentAreaEl = root.createDiv({ cls: 'tm-content' })
 
         const activeFile = this.app.workspace.getActiveFile()
@@ -153,15 +156,15 @@ export class TimeMachineView extends ItemView {
     }
 
     private renderHeader(file: TFile | null): void {
-        this.headerEl.empty()
+        this.tmHeaderEl.empty()
 
         if (!file) {
-            this.headerEl.createDiv({ cls: 'tm-header-file', text: PLUGIN_NAME })
+            this.tmHeaderEl.createDiv({ cls: 'tm-header-file', text: PLUGIN_NAME })
             return
         }
 
-        this.headerEl.createDiv({ cls: 'tm-header-file', text: file.name })
-        this.headerEl.createDiv({
+        this.tmHeaderEl.createDiv({ cls: 'tm-header-file', text: file.name })
+        this.tmHeaderEl.createDiv({
             cls: 'tm-header-count',
             text: `${this.snapshots.length} snapshot${this.snapshots.length === 1 ? '' : 's'}`
         })
