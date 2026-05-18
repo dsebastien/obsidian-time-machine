@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3](https://github.com/dsebastien/obsidian-time-machine/compare/1.0.2...1.0.3) (2026-05-18)
+
+### Bug Fixes
+
+* **all:** work around conflict with Pane-Relief plugin ([155c4c8](https://github.com/dsebastien/obsidian-time-machine/commit/155c4c84fc9d8f3d9751b3ae5b6fbb2587d819a6)), closes [#5](https://github.com/dsebastien/obsidian-time-machine/issues/5)
+
 ## [1.0.2](https://github.com/dsebastien/obsidian-time-machine/compare/1.0.1...1.0.2) (2026-05-15)
 
 ## [1.0.1](https://github.com/dsebastien/obsidian-time-machine/compare/1.0.0...1.0.1) (2026-05-14)
@@ -74,6 +80,7 @@ All notable changes to this project will be documented in this file.
 * **all:** fied the release workflow to name the tags correctly ([95aa6ff](https://github.com/dsebastien/obsidian-time-machine/commit/95aa6ffd40e718d055e24e1f052ed374e171376b))
 * **all:** fix image url ([1a0086b](https://github.com/dsebastien/obsidian-time-machine/commit/1a0086b1982b8da1f6e3c3135f27dcd9bb2ff787))
 * **all:** use console.debug instead of console.log ([09306e4](https://github.com/dsebastien/obsidian-time-machine/commit/09306e492c81437dff10dfe8b3b5e5734be1382a))
+
 
 
 

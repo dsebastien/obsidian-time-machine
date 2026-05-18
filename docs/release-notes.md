@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.0.3 (2026-05-18)
+
+### Bug Fixes
+
+- **all:** work around conflict with Pane-Relief plugin
+
 ## 1.0.2 (2026-05-15)
 
 ## 1.0.1 (2026-05-14)
