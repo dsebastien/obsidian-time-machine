@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.0.4 (2026-06-09)
+
+### Bug Fixes
+
+- **all:** fixed issue with diffs and improved rendering
+
 ## 1.0.3 (2026-05-18)
 
 ### Bug Fixes
