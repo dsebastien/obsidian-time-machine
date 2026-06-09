@@ -383,6 +383,17 @@
         @apply whitespace-pre-wrap break-all select-text cursor-text;
     }
 
+    /* Inline word-level highlights inside a changed line. */
+    .tm-diff-word-added {
+        @apply rounded-sm;
+        background-color: rgba(0, 180, 0, 0.3);
+    }
+
+    .tm-diff-word-removed {
+        @apply rounded-sm;
+        background-color: rgba(220, 0, 0, 0.3);
+    }
+
     /* ========================================
        TIME MACHINE - CONFIRM DIALOG
        ======================================== */

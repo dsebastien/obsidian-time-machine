@@ -1,5 +1,5 @@
 import { setIcon } from 'obsidian'
-import type { DiffResult } from '../../types/diff.intf'
+import type { DiffHunk, DiffLine, DiffResult } from '../../types/diff.intf'
 
 export interface DiffViewerCallbacks {
     onRestoreFullVersion: () => void
@@ -50,16 +50,7 @@ export class DiffViewerComponent {
         })
     }
 
-    private renderHunk(
-        hunk: {
-            oldStart: number
-            oldLines: number
-            newStart: number
-            newLines: number
-            lines: string[]
-        },
-        index: number
-    ): void {
+    private renderHunk(hunk: DiffHunk, index: number): void {
         const hunkEl = this.container.createDiv({ cls: 'tm-diff-hunk' })
 
         const hunkHeader = hunkEl.createDiv({ cls: 'tm-diff-hunk-header' })
@@ -80,20 +71,34 @@ export class DiffViewerComponent {
         })
 
         const linesEl = hunkEl.createDiv({ cls: 'tm-diff-lines' })
-        for (const line of hunk.lines) {
-            const prefix = line[0]
-            const content = line.substring(1)
+        for (const line of hunk.renderLines) {
+            this.renderLine(linesEl, line)
+        }
+    }
 
-            let lineClass = 'tm-diff-line tm-diff-context'
-            if (prefix === '+') {
-                lineClass = 'tm-diff-line tm-diff-added'
-            } else if (prefix === '-') {
-                lineClass = 'tm-diff-line tm-diff-removed'
+    private renderLine(linesEl: HTMLElement, line: DiffLine): void {
+        let lineClass = 'tm-diff-line tm-diff-context'
+        let prefix = ' '
+        if (line.type === 'added') {
+            lineClass = 'tm-diff-line tm-diff-added'
+            prefix = '+'
+        } else if (line.type === 'removed') {
+            lineClass = 'tm-diff-line tm-diff-removed'
+            prefix = '-'
+        }
+
+        const lineEl = linesEl.createDiv({ cls: lineClass })
+        lineEl.createSpan({ cls: 'tm-diff-line-prefix', text: prefix })
+        const contentEl = lineEl.createSpan({ cls: 'tm-diff-line-content' })
+        for (const segment of line.segments) {
+            if (segment.kind === 'same') {
+                contentEl.createSpan({ text: segment.text })
+            } else {
+                contentEl.createSpan({
+                    cls: segment.kind === 'added' ? 'tm-diff-word-added' : 'tm-diff-word-removed',
+                    text: segment.text
+                })
             }
-
-            const lineEl = linesEl.createDiv({ cls: lineClass })
-            lineEl.createSpan({ cls: 'tm-diff-line-prefix', text: prefix ?? ' ' })
-            lineEl.createSpan({ cls: 'tm-diff-line-content', text: content })
         }
     }
 }

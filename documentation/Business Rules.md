@@ -35,6 +35,10 @@ Snapshots are always sorted descending by timestamp (newest first), regardless o
 
 The plugin compares the live file content against a selected snapshot (current vs version). Users select snapshots via a timeline slider.
 
+## Diff Rendering
+
+Diffs are line-based (unified hunks, 3 lines of context) so per-hunk restore stays line-addressable, but each modified line additionally shows **word-level** inline highlighting (via `diffWordsWithSpace`): only the changed words are tinted, not the whole line. Line endings are normalized (CRLF→LF) before diffing so a line-ending mismatch between a snapshot and the current file does not report every line as changed. The diff library's `\ No newline at end of file` marker is stripped from rendered output.
+
 ## Timeline Slider
 
 The slider maps left=newest, right=oldest. It auto-selects the newest snapshot on render and fires diff computation on each change. The slider is hidden when only one snapshot exists (just the date info and diff are shown).

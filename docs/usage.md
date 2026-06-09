@@ -56,6 +56,8 @@ The diff view shows what changed between the selected snapshot and your current 
 - Lines with a **red background** and `-` prefix are removals (present in the snapshot, not in current file)
 - Lines with no highlight are context lines (unchanged)
 
+When a line is edited rather than added or removed wholesale, only the **changed words** are highlighted (stronger green/red) within the line, so small edits to a long paragraph no longer show the whole paragraph as removed and re-added.
+
 Each group of related changes is displayed as a **hunk** with a header showing the line range (e.g., `@@ -10,5 +10,7 @@`).
 
 The diff label indicates the source:

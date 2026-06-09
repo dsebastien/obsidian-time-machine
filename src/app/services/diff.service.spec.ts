@@ -64,4 +64,66 @@ describe('DiffService', () => {
         const contextLines = result.hunks[0]!.lines.filter((l) => l.startsWith(' '))
         expect(contextLines.length).toBeGreaterThan(0)
     })
+
+    test('computeDiff normalizes CRLF so only changed lines differ', () => {
+        // Old version has CRLF endings, new has LF; only the second line changed.
+        const old = 'line1\r\nline2\r\nline3\r\n'
+        const newText = 'line1\nline2 changed\nline3\n'
+        const result = DiffService.computeDiff(old, newText, 'old', 'new')
+
+        const removed = result.hunks.flatMap((h) => h.lines.filter((l) => l.startsWith('-')))
+        const added = result.hunks.flatMap((h) => h.lines.filter((l) => l.startsWith('+')))
+        // Without normalization every line would show as removed+added (3 each).
+        expect(removed).toEqual(['-line2'])
+        expect(added).toEqual(['+line2 changed'])
+    })
+
+    test('buildRenderLines highlights only changed words within a modified line', () => {
+        const result = DiffService.computeDiff(
+            'The quick brown fox jumps',
+            'The quick brown fox leaps',
+            'old',
+            'new'
+        )
+
+        const renderLines = result.hunks[0]!.renderLines
+        const removed = renderLines.find((l) => l.type === 'removed')!
+        const added = renderLines.find((l) => l.type === 'added')!
+
+        // Unchanged prefix stays a `same` segment; only the last word is tagged.
+        expect(removed.segments).toEqual([
+            { text: 'The quick brown fox ', kind: 'same' },
+            { text: 'jumps', kind: 'removed' }
+        ])
+        expect(added.segments).toEqual([
+            { text: 'The quick brown fox ', kind: 'same' },
+            { text: 'leaps', kind: 'added' }
+        ])
+    })
+
+    test('buildRenderLines drops the "no newline at end of file" marker', () => {
+        // Neither side ends with a newline -> diff library emits a `\` marker line.
+        const result = DiffService.computeDiff('alpha\nbravo', 'alpha\nbravo changed', 'old', 'new')
+
+        const renderLines = result.hunks.flatMap((h) => h.renderLines)
+        const hasMarker = renderLines.some((l) =>
+            l.segments.some((s) => s.text.includes('No newline'))
+        )
+        expect(hasMarker).toBe(false)
+    })
+
+    test('buildRenderLines tags a pure addition as fully added', () => {
+        // Trailing newlines keep this a clean append (no no-newline boundary change).
+        const result = DiffService.computeDiff(
+            'line1\nline2\n',
+            'line1\nline2\nline3\n',
+            'old',
+            'new'
+        )
+
+        const renderLines = result.hunks[0]!.renderLines
+        const added = renderLines.filter((l) => l.type === 'added')
+        expect(added).toHaveLength(1)
+        expect(added[0]!.segments).toEqual([{ text: 'line3', kind: 'added' }])
+    })
 })
