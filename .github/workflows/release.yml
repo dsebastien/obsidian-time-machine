@@ -116,6 +116,7 @@ jobs:
 
             - name: Generate artifact attestations
               uses: actions/attest-build-provenance@v3
+              continue-on-error: true
               with:
                   subject-path: |
                       dist/main.js
