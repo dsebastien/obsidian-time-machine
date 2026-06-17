@@ -62,7 +62,7 @@ export class TimeMachineView extends ItemView {
         this.tmHeaderEl = root.createDiv({ cls: 'tm-header' })
         this.contentAreaEl = root.createDiv({ cls: 'tm-content' })
 
-        const activeFile = this.app.workspace.getActiveFile()
+        const activeFile = this.plugin.resolveActiveFile()
         if (activeFile) {
             await this.updateForFile(activeFile)
         } else {

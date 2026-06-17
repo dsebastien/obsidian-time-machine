@@ -19,7 +19,7 @@ Instead of restoring an entire version, you can restore individual hunks. This i
 
 ## Keeping the sidebar open
 
-The Time Machine panel stays in sync with your active file. Keep it open in the right sidebar while you work -- it will automatically update as you switch between files.
+The Time Machine panel stays in sync with your active file. Keep it open in the right sidebar while you work -- it will automatically update as you switch between files. It also follows your text cursor, so in continuous-scroll views (such as the Daily Notes Editor plugin) it shows the history of whichever note the cursor is currently in.
 
 ## Git integration tips
 

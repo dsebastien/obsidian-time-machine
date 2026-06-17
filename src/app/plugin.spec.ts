@@ -10,6 +10,7 @@ type PluginInternals = any
 let registeredEvents: Array<{ type: string; callback: (...args: unknown[]) => void }> = []
 let registeredIntervals: number[] = []
 let setIntervalCalls: Array<{ callback: () => void; ms: number }> = []
+let registeredDomEvents: Array<{ type: string; callback: (...args: unknown[]) => void }> = []
 
 // Mock view factory — creates objects that pass `instanceof TimeMachineView`
 function createMockView(currentFilePath: string | null): {
@@ -35,6 +36,7 @@ function createPlugin(
     registeredEvents = []
     registeredIntervals = []
     setIntervalCalls = []
+    registeredDomEvents = []
 
     const leaves = viewMocks.map((vm) => ({
         view: vm.view
@@ -48,7 +50,8 @@ function createPlugin(
             on: (_event: string, _cb: unknown) => ({ type: _event, callback: _cb }),
             getLeavesOfType: (_type: string) => leaves,
             getActiveFile: () => null,
-            getRightLeaf: () => null
+            getRightLeaf: () => null,
+            activeEditor: null
         },
         vault: {
             on: (_event: string, _cb: unknown) => ({ type: _event, callback: _cb })
@@ -66,6 +69,12 @@ function createPlugin(
     p.registerInterval = mock((intervalId: number) => {
         registeredIntervals.push(intervalId)
     })
+
+    p.registerDomEvent = mock(
+        (_el: unknown, type: string, callback: (...args: unknown[]) => void) => {
+            registeredDomEvents.push({ type, callback })
+        }
+    )
 
     p.registerView = mock(() => {})
     p.addCommand = mock(() => {})
@@ -89,10 +98,15 @@ describe('TimeMachinePlugin', () => {
         globalThis.window = {
             setInterval: mockSetInterval
         } as unknown as Window & typeof globalThis
+
+        // `activeDocument` is an Obsidian global; provide a stub for onload's
+        // registerDomEvent('selectionchange', ...) registration.
+        ;(globalThis as Record<string, unknown>)['activeDocument'] = {}
     })
 
     afterEach(() => {
         globalThis.window = originalWindow
+        delete (globalThis as Record<string, unknown>)['activeDocument']
     })
 
     describe('modify event handler', () => {
@@ -215,6 +229,82 @@ describe('TimeMachinePlugin', () => {
             fileOpenEvent!.callback(newFile)
 
             expect(vm.updateForFile).toHaveBeenCalled()
+        })
+    })
+
+    describe('cursor sync (continuous-scroll support)', () => {
+        test('registers a selectionchange DOM handler', async () => {
+            const vm = createMockView('a.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+
+            expect(registeredDomEvents.find((e) => e.type === 'selectionchange')).toBeDefined()
+        })
+
+        test('switches view to the focused editor file when the cursor moves', async () => {
+            const vm = createMockView('notes/day-1.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+
+            // Cursor moved into a different note rendered in the same leaf.
+            const cursorFile = { path: 'notes/day-2.md', name: 'day-2.md' }
+            ;(plugin as PluginInternals).app.workspace.activeEditor = { file: cursorFile }
+
+            const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
+            expect(leafChange).toBeDefined()
+            leafChange!.callback(null)
+
+            expect(vm.updateForFile).toHaveBeenCalledWith(cursorFile)
+        })
+
+        test('does not re-update when the cursor stays in the current file', async () => {
+            const vm = createMockView('notes/day-1.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+            ;(plugin as PluginInternals).app.workspace.activeEditor = {
+                file: { path: 'notes/day-1.md', name: 'day-1.md' }
+            }
+
+            const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
+            leafChange!.callback(null)
+
+            expect(vm.updateForFile).not.toHaveBeenCalled()
+        })
+
+        test('does not clear the view when no file is resolved', async () => {
+            const vm = createMockView('notes/day-1.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+
+            // No active editor and no active file (e.g. focus moved to the sidebar).
+            const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
+            leafChange!.callback(null)
+
+            expect(vm.updateForFile).not.toHaveBeenCalled()
+        })
+
+        test('prefers activeEditor.file over getActiveFile', async () => {
+            const vm = createMockView('notes/leaf-file.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+
+            const internals = plugin as PluginInternals
+            internals.app.workspace.getActiveFile = () => ({
+                path: 'notes/leaf-file.md',
+                name: 'leaf-file.md'
+            })
+            const cursorFile = { path: 'notes/cursor-file.md', name: 'cursor-file.md' }
+            internals.app.workspace.activeEditor = { file: cursorFile }
+
+            const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
+            leafChange!.callback(null)
+
+            expect(vm.updateForFile).toHaveBeenCalledWith(cursorFile)
         })
     })
 })

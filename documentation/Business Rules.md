@@ -25,7 +25,7 @@ Full version restore requires user confirmation via a modal dialog. Hunk restore
 
 ## View Behavior
 
-The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event and refreshes when the current file is modified (debounced at 1 second). Snapshots are periodically re-fetched from IndexedDB at the file-recovery `intervalMinutes` rate (only when views are open). Users open it manually via the "Open view" command.
+The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event, and also follows the text cursor: a debounced `selectionchange`/`active-leaf-change` handler resolves the focused editor's file (`workspace.activeEditor.file`, falling back to `getActiveFile()`) and switches the view to the note the cursor is in. This supports continuous-scroll plugins (e.g. Daily Notes Editor) that render multiple notes in one leaf where `file-open` does not fire. Cursor-following never clears the view when no file resolves (focus moved to the sidebar/the view itself). It refreshes when the current file is modified (debounced at 1 second). Snapshots are periodically re-fetched from IndexedDB at the file-recovery `intervalMinutes` rate (only when views are open). Users open it manually via the "Open view" command.
 
 ## Snapshot Ordering
 

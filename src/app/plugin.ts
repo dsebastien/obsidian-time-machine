@@ -1,4 +1,4 @@
-import { Notice, Plugin, debounce, type WorkspaceLeaf } from 'obsidian'
+import { Notice, Plugin, debounce, type TFile, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
 import { TimeMachineSettingTab } from './settings/settings-tab'
@@ -30,6 +30,16 @@ export class TimeMachinePlugin extends Plugin {
                     void view.updateForFile(file)
                 }
             })
+        )
+
+        // Continuous-scroll plugins (e.g. Daily Notes Editor) render several notes
+        // inside a single leaf, so `file-open` does not fire when the cursor moves
+        // between notes. Track caret movement and switch the view to the note the
+        // cursor is actually in, resolved via `workspace.activeEditor.file`.
+        const debouncedCursorSync = debounce(() => this.syncToCursorFile(), 150, true)
+        this.registerDomEvent(activeDocument, 'selectionchange', debouncedCursorSync)
+        this.registerEvent(
+            this.app.workspace.on('active-leaf-change', () => this.syncToCursorFile())
         )
 
         const debouncedRefresh = debounce(
@@ -67,6 +77,32 @@ export class TimeMachinePlugin extends Plugin {
         )
 
         this.addSettingTab(new TimeMachineSettingTab(this.app, this))
+    }
+
+    /**
+     * Resolves the file the cursor is currently in, preferring the focused
+     * editor (`activeEditor.file`) over the leaf-level active file. Inside a
+     * continuous scroll the focused editor points at the specific note holding
+     * the caret, whereas `getActiveFile()` returns the leaf's representative file.
+     */
+    resolveActiveFile(): TFile | null {
+        return this.app.workspace.activeEditor?.file ?? this.app.workspace.getActiveFile()
+    }
+
+    /**
+     * Switches open views to the file the cursor is in, if it changed. Only
+     * acts when a file is resolved so caret moves into non-editor surfaces (the
+     * sidebar, the view itself) never clear the displayed history.
+     */
+    private syncToCursorFile(): void {
+        const file = this.resolveActiveFile()
+        if (!file) return
+
+        for (const view of this.getActiveViews()) {
+            if (view.getCurrentFile()?.path !== file.path) {
+                void view.updateForFile(file)
+            }
+        }
     }
 
     private getActiveViews(): TimeMachineView[] {
