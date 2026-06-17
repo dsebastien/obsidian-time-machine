@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.0.6 (2026-06-17)
+
+### Bug Fixes
+
+- **plugin:** follow text cursor so continuous-scroll views track the right file
+
 ## 1.0.5 (2026-06-09)
 
 ## 1.0.4 (2026-06-09)
