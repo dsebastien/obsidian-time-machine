@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.0.7 (2026-07-13)
+
+### Bug Fixes
+
+- **plugin:** keep view fixed while interacting with the slider
+
 ## 1.0.6 (2026-06-17)
 
 ### Bug Fixes
