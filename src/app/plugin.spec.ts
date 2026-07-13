@@ -287,6 +287,46 @@ describe('TimeMachinePlugin', () => {
             expect(vm.updateForFile).not.toHaveBeenCalled()
         })
 
+        test('does not switch file while focus is inside the Time Machine view (slider)', async () => {
+            const vm = createMockView('notes/day-1.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+
+            // A different tab's file would resolve as "active"...
+            ;(plugin as PluginInternals).app.workspace.activeEditor = {
+                file: { path: 'notes/other-tab.md', name: 'other-tab.md' }
+            }
+
+            // ...but focus is on an element inside the Time Machine view (its slider).
+            const sliderEl = {}
+            vm.view['containerEl'] = { contains: (el: unknown) => el === sliderEl }
+            ;(globalThis as Record<string, unknown>)['activeDocument'] = {
+                activeElement: sliderEl
+            }
+
+            const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
+            leafChange!.callback(null)
+
+            expect(vm.updateForFile).not.toHaveBeenCalled()
+        })
+
+        test('does not switch file when the Time Machine view becomes the active leaf', async () => {
+            const vm = createMockView('notes/day-1.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+            ;(plugin as PluginInternals).app.workspace.activeEditor = {
+                file: { path: 'notes/other-tab.md', name: 'other-tab.md' }
+            }
+
+            const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
+            // The newly active leaf is the Time Machine view itself.
+            leafChange!.callback({ view: vm.view })
+
+            expect(vm.updateForFile).not.toHaveBeenCalled()
+        })
+
         test('prefers activeEditor.file over getActiveFile', async () => {
             const vm = createMockView('notes/leaf-file.md')
             const plugin = createPlugin([vm], { intervalMinutes: 5 })

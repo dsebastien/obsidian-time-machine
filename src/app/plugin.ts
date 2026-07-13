@@ -39,7 +39,12 @@ export class TimeMachinePlugin extends Plugin {
         const debouncedCursorSync = debounce(() => this.syncToCursorFile(), 150, true)
         this.registerDomEvent(activeDocument, 'selectionchange', debouncedCursorSync)
         this.registerEvent(
-            this.app.workspace.on('active-leaf-change', () => this.syncToCursorFile())
+            this.app.workspace.on('active-leaf-change', (leaf) => {
+                // Focusing the Time Machine view itself (e.g. clicking its slider)
+                // must not switch the displayed file.
+                if (leaf?.view instanceof TimeMachineView) return
+                this.syncToCursorFile()
+            })
         )
 
         const debouncedRefresh = debounce(
@@ -95,6 +100,13 @@ export class TimeMachinePlugin extends Plugin {
      * sidebar, the view itself) never clear the displayed history.
      */
     private syncToCursorFile(): void {
+        // Skip when the user is interacting with the Time Machine view itself
+        // (e.g. dragging the timeline slider). In a split with a continuous-scroll
+        // pane and a regular note, resolving the "active" file at that moment would
+        // point at the other tab and wrongly switch the view away from the note the
+        // caret is in.
+        if (this.isFocusInsideOwnView()) return
+
         const file = this.resolveActiveFile()
         if (!file) return
 
@@ -103,6 +115,17 @@ export class TimeMachinePlugin extends Plugin {
                 void view.updateForFile(file)
             }
         }
+    }
+
+    /**
+     * Whether the currently focused element lives inside one of the plugin's own
+     * views. Used to leave the displayed history untouched while the user
+     * interacts with the Time Machine pane (slider, restore buttons, ...).
+     */
+    private isFocusInsideOwnView(): boolean {
+        const active = activeDocument.activeElement
+        if (!active) return false
+        return this.getActiveViews().some((view) => view.containerEl?.contains(active))
     }
 
     private getActiveViews(): TimeMachineView[] {
