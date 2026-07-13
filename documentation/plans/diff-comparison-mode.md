@@ -66,9 +66,7 @@ Properties this gives us:
 
 ### View — `time-machine-view.ts`
 
-- `computeAndRenderDiff`: branch on `plugin.settings.diffComparisonMode`.
-    - `current`: unchanged (`snapshot.data → currentContent`, label `Current`).
-    - `next`: compute `newerContent`/`newerLabel` per the model above and diff `snapshot.data →
+- `computeAndRenderDiff`: branch on `plugin.settings.diffComparisonMode`. - `current`: unchanged (`snapshot.data → currentContent`, label `Current`). - `next`: compute `newerContent`/`newerLabel` per the model above and diff `snapshot.data →
 newerContent`. Label = `Current` for `i === 0`, else `formatDiffLabel(snapshots[i-1])`.
 - Pass the active mode (and a mode-change handler that persists + recomputes) into the
   diff-viewer.
