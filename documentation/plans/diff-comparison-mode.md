@@ -67,9 +67,9 @@ Properties this gives us:
 ### View — `time-machine-view.ts`
 
 - `computeAndRenderDiff`: branch on `plugin.settings.diffComparisonMode`.
-  - `current`: unchanged (`snapshot.data → currentContent`, label `Current`).
-  - `next`: compute `newerContent`/`newerLabel` per the model above and diff `snapshot.data →
-    newerContent`. Label = `Current` for `i === 0`, else `formatDiffLabel(snapshots[i-1])`.
+    - `current`: unchanged (`snapshot.data → currentContent`, label `Current`).
+    - `next`: compute `newerContent`/`newerLabel` per the model above and diff `snapshot.data →
+newerContent`. Label = `Current` for `i === 0`, else `formatDiffLabel(snapshots[i-1])`.
 - Pass the active mode (and a mode-change handler that persists + recomputes) into the
   diff-viewer.
 
@@ -88,9 +88,9 @@ Properties this gives us:
 ## Tests
 
 - `time-machine-view.spec.ts`:
-  - `next` mode diffs `snapshots[i]` against `snapshots[i-1]`.
-  - `next` mode on newest snapshot (`i === 0`) diffs against current content (== `current` mode).
-  - mode change persists to settings and triggers a recompute.
+    - `next` mode diffs `snapshots[i]` against `snapshots[i-1]`.
+    - `next` mode on newest snapshot (`i === 0`) diffs against current content (== `current` mode).
+    - mode change persists to settings and triggers a recompute.
 - `diff-viewer` spec (or view spec): per-hunk restore button hidden in `next` mode, shown in
   `current` mode.
 
