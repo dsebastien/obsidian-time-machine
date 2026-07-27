@@ -64,6 +64,7 @@ Time Machine reads snapshots from two sources:
 
 - **File Recovery** (always) -- Obsidian's core plugin that automatically saves snapshots at regular intervals (every 2 minutes by default)
 - **Git** (desktop, optional) -- if your vault lives in a git repository, Time Machine fetches the commit history for each file
+- **What's new after updates.** After a plugin update, a one-time dialog shows the release notes you just received (including skipped versions) with ways to support development. Never shown on fresh installs or regular restarts.
 
 Both sources are merged into a single chronological timeline. Snapshots with identical content are deduplicated, keeping only the most recent one.
 

@@ -47,6 +47,9 @@ function createPlugin(
 
     p.app = {
         workspace: {
+            // The what's-new dialog registers a layout-ready callback; never
+            // firing it keeps the dialog out of these tests.
+            onLayoutReady: (_cb: () => void) => {},
             on: (_event: string, _cb: unknown) => ({ type: _event, callback: _cb }),
             getLeavesOfType: (_type: string) => leaves,
             getActiveFile: () => null,

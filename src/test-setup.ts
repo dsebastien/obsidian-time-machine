@@ -13,6 +13,13 @@ void mock.module('obsidian', () => ({
         }
     },
     App: class App {},
+    Component: class Component {
+        load() {}
+        unload() {}
+    },
+    MarkdownRenderer: {
+        render: () => Promise.resolve()
+    },
     TFile: class TFile {},
     Plugin: class Plugin {},
     PluginSettingTab: class PluginSettingTab {},
