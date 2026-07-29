@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0](https://github.com/dsebastien/obsidian-time-machine/compare/1.1.0...1.2.0) (2026-07-29)
+
+### Features
+
+* **plugin:** add Knowii community to the what's new dialog and harden it ([54d94de](https://github.com/dsebastien/obsidian-time-machine/commit/54d94ded5adeadd1b8e830212c13ed0ce4284ea5))
+
 ## [1.1.0](https://github.com/dsebastien/obsidian-time-machine/compare/1.0.8...1.1.0) (2026-07-27)
 
 ### Features
@@ -108,6 +114,7 @@ All notable changes to this project will be documented in this file.
 * **all:** fied the release workflow to name the tags correctly ([95aa6ff](https://github.com/dsebastien/obsidian-time-machine/commit/95aa6ffd40e718d055e24e1f052ed374e171376b))
 * **all:** fix image url ([1a0086b](https://github.com/dsebastien/obsidian-time-machine/commit/1a0086b1982b8da1f6e3c3135f27dcd9bb2ff787))
 * **all:** use console.debug instead of console.log ([09306e4](https://github.com/dsebastien/obsidian-time-machine/commit/09306e492c81437dff10dfe8b3b5e5734be1382a))
+
 
 
 
