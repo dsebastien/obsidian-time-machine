@@ -65,6 +65,9 @@ function createPlugin(
         }
     }
 
+    // Component.register — used by the what's-new dialog for unload cleanup
+    p.register = mock((_cb: () => void) => {})
+
     p.registerEvent = mock((eventRef: { type: string; callback: (...args: unknown[]) => void }) => {
         registeredEvents.push(eventRef)
     })
