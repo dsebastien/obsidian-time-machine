@@ -2,6 +2,7 @@ import { type App, Platform, PluginSettingTab, Setting } from 'obsidian'
 import type TimeMachinePlugin from '../../main'
 import { GitService } from '../services/git.service'
 import { BUY_ME_A_COFFEE_BADGE_DATA_URL } from '../assets/buy-me-a-coffee'
+import { renderSupportSection } from '../ui/support-links'
 
 export class TimeMachineSettingTab extends PluginSettingTab {
     plugin: TimeMachinePlugin
@@ -94,18 +95,9 @@ export class TimeMachineSettingTab extends PluginSettingTab {
     }
 
     renderSupportHeader(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Support').setHeading()
-
-        const supportDesc = new DocumentFragment()
-        supportDesc.createDiv({
-            text: 'Buy me a coffee to support the development of this plugin'
+        renderSupportSection(containerEl, (el) => {
+            this.renderBuyMeACoffeeBadge(el)
         })
-
-        new Setting(containerEl).setDesc(supportDesc)
-
-        this.renderBuyMeACoffeeBadge(containerEl)
-        const spacing = containerEl.createDiv()
-        spacing.classList.add('support-header-margin')
     }
 
     renderBuyMeACoffeeBadge(contentEl: HTMLElement | DocumentFragment, width = 175): void {
