@@ -1,5 +1,17 @@
 # Release Notes
 
+## 1.4.0 (2026-08-19)
+
+### Features
+
+- **plugin:** add a version-to-version diff comparison mode
+- **plugin:** show what's new in a tab instead of a modal dialog
+- **plugin:** surface support CTAs everywhere users can see them
+
+### Bug Fixes
+
+- **plugin:** stop cursor-following from resolving files via getActiveFile
+
 ## 1.3.0 (2026-07-29)
 
 ### Features
