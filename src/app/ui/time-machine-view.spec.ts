@@ -4,6 +4,7 @@ import { TimeMachineView } from './time-machine-view'
 import type { TimeMachinePlugin } from '../plugin'
 import type { Snapshot } from '../types/snapshot.intf'
 import { SnapshotService } from '../services/snapshot.service'
+import { DiffService } from '../services/diff.service'
 import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,8 +75,9 @@ function createSnapshot(
 function createView(): TimeMachineView {
     const mockLeaf = {} as WorkspaceLeaf
     const mockPlugin = {
-        settings: { ...DEFAULT_SETTINGS }
-    } as TimeMachinePlugin
+        settings: { ...DEFAULT_SETTINGS },
+        saveSettings: mock(async () => {})
+    } as unknown as TimeMachinePlugin
 
     const view = new TimeMachineView(mockLeaf, mockPlugin)
     const v: ViewInternals = view
@@ -339,6 +341,109 @@ describe('TimeMachineView', () => {
             await view.refreshCurrentContent()
 
             expect(v.selectedSnapshotIndex).toBe(0)
+        })
+    })
+
+    describe('diff comparison mode', () => {
+        function setupForDiff(view: TimeMachineView): {
+            v: ViewInternals
+            render: ReturnType<typeof mock>
+        } {
+            const v: ViewInternals = view
+            v.currentFile = createMockFile('note.md')
+            // Newest first: [0]=v3, [1]=v2, [2]=v1
+            v.snapshots = [
+                createSnapshot('note.md', 3000, 'v3'),
+                createSnapshot('note.md', 2000, 'v2'),
+                createSnapshot('note.md', 1000, 'v1')
+            ]
+            const render = mock(() => {})
+            v.diffViewer = { render }
+            v.app.vault.read = mock(async () => 'current-content')
+            return { v, render }
+        }
+
+        test('current mode diffs the selected snapshot against the current file', async () => {
+            const view = createView()
+            const { v, render } = setupForDiff(view)
+            v.plugin.settings.diffComparisonMode = 'current'
+            v.selectedSnapshotIndex = 2
+
+            const computeSpy = spyOn(DiffService, 'computeDiff')
+            await v.computeAndRenderDiff()
+
+            expect(computeSpy).toHaveBeenCalled()
+            const [oldContent, newContent, , newLabel] = computeSpy.mock.calls[0] as string[]
+            expect(oldContent).toBe('v1')
+            expect(newContent).toBe('current-content')
+            expect(newLabel).toBe('Current')
+            expect(render.mock.calls[0]?.[1]).toBe('current')
+            computeSpy.mockRestore()
+        })
+
+        test('next mode diffs the selected snapshot against the next newer snapshot', async () => {
+            const view = createView()
+            const { v, render } = setupForDiff(view)
+            v.plugin.settings.diffComparisonMode = 'next'
+            v.selectedSnapshotIndex = 2
+
+            const computeSpy = spyOn(DiffService, 'computeDiff')
+            await v.computeAndRenderDiff()
+
+            const [oldContent, newContent, , newLabel] = computeSpy.mock.calls[0] as string[]
+            expect(oldContent).toBe('v1')
+            expect(newContent).toBe('v2')
+            expect(newLabel).not.toBe('Current')
+            expect(render.mock.calls[0]?.[1]).toBe('next')
+            computeSpy.mockRestore()
+        })
+
+        test('next mode on the newest snapshot diffs against the current file (same as current mode)', async () => {
+            const view = createView()
+            const { v } = setupForDiff(view)
+            v.plugin.settings.diffComparisonMode = 'next'
+            v.selectedSnapshotIndex = 0
+
+            const computeSpy = spyOn(DiffService, 'computeDiff')
+            await v.computeAndRenderDiff()
+
+            const [oldContent, newContent, , newLabel] = computeSpy.mock.calls[0] as string[]
+            expect(oldContent).toBe('v3')
+            expect(newContent).toBe('current-content')
+            expect(newLabel).toBe('Current')
+            computeSpy.mockRestore()
+        })
+
+        test('mode change persists to settings and triggers a recompute', async () => {
+            const view = createView()
+            const { v } = setupForDiff(view)
+            v.selectedSnapshotIndex = 0
+
+            const computeSpy = spyOn(DiffService, 'computeDiff')
+            // Build the real diff viewer (and its callbacks) via renderContent
+            v.renderContent()
+            const callbacks = v.diffViewer.callbacks
+
+            callbacks.onComparisonModeChange('next')
+            await new Promise((resolve) => setTimeout(resolve, 0))
+
+            expect(v.plugin.settings.diffComparisonMode).toBe('next')
+            expect(v.plugin.saveSettings).toHaveBeenCalled()
+            expect(computeSpy).toHaveBeenCalled()
+            computeSpy.mockRestore()
+        })
+
+        test('hunk restore is refused in next mode', async () => {
+            const view = createView()
+            const { v } = setupForDiff(view)
+            v.plugin.settings.diffComparisonMode = 'next'
+            v.selectedSnapshotIndex = 1
+
+            const vaultRead = v.app.vault.read as ReturnType<typeof mock>
+            await v.handleRestoreHunk(0)
+
+            // Bails out before even reading the current file
+            expect(vaultRead).not.toHaveBeenCalled()
         })
     })
 

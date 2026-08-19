@@ -12,6 +12,7 @@ Browse, compare, and restore previous versions of your notes using Obsidian's bu
 
 - **Timeline slider** to scrub through snapshots of your notes
 - **Colored diff view** showing exactly what changed between a snapshot and your current file
+- **Comparison modes** -- compare against the current file (cumulative) or the next version (incremental)
 - **Selective restore** -- restore an entire version or just individual changes (hunks)
 - **Git integration** -- git commits appear alongside File Recovery snapshots on the same timeline (desktop only)
 - **Source indicators** -- each snapshot shows its origin (File Recovery or git commit with hash and message)

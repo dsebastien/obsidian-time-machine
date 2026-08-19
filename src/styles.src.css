@@ -303,7 +303,38 @@
     }
 
     .tm-diff-toolbar {
-        @apply flex justify-end mb-1;
+        @apply flex items-center justify-between gap-2 flex-wrap mb-1;
+    }
+
+    .tm-compare-mode {
+        @apply flex items-center gap-1.5;
+    }
+
+    .tm-compare-mode-label {
+        @apply text-xs;
+        color: var(--text-faint);
+    }
+
+    .tm-compare-mode-group {
+        @apply flex rounded overflow-hidden;
+        border: 1px solid var(--background-modifier-border);
+    }
+
+    .tm-compare-mode-btn {
+        @apply px-2 py-0.5 text-xs cursor-pointer;
+        background-color: var(--interactive-normal);
+        color: var(--text-muted);
+        border: none;
+        transition: background-color 100ms ease;
+    }
+
+    .tm-compare-mode-btn:hover {
+        background-color: var(--interactive-hover);
+    }
+
+    .tm-compare-mode-btn.is-active {
+        background-color: var(--interactive-accent);
+        color: var(--text-on-accent);
     }
 
     .tm-restore-full-btn {

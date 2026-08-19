@@ -50,7 +50,22 @@ Snapshots that are identical to the current file content are automatically hidde
 
 ## Reading the diff
 
-The diff view shows what changed between the selected snapshot and your current file content.
+By default, the diff view shows what changed between the selected snapshot and your current file content.
+
+### Comparison modes
+
+A **Compare with** toggle at the top of the diff view picks which newer version the selected snapshot is compared against:
+
+- **Current file** (default) -- everything that changed between the selected version and the file as it is now. Scrubbing into the past shows the _cumulative_ drift up to today.
+- **Next version** -- only what changed between the selected version and the next newer one, like Obsidian's core File Recovery. Scrubbing steps through the _incremental_ change of each version.
+
+For the newest snapshot both modes show the same thing (its "next version" is the current file). Your last choice is remembered across sessions.
+
+In **Next version** mode the per-hunk restore buttons are hidden: those hunks describe a change between two historical versions, so applying one to the current file would be ambiguous. **Restore entire version** stays available in both modes.
+
+### Diff colors
+
+In the diff itself (reading "old" as the selected snapshot and "new" as whatever it is compared against):
 
 - Lines with a **green background** and `+` prefix are additions (present in current file, not in the snapshot)
 - Lines with a **red background** and `-` prefix are removals (present in the snapshot, not in current file)

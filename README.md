@@ -12,6 +12,7 @@ Time Machine turns Obsidian's built-in File Recovery snapshots and git commits i
 
 - **Timeline slider** -- drag through your note's history to see how it evolved over time
 - **Colored diff view** -- additions in green, deletions in red, so you can instantly spot what changed
+- **Comparison modes** -- diff the selected version against the current file (cumulative) or against the next version (step by step, like core File Recovery)
 - **Full version restore** -- roll back your entire note to any previous snapshot
 - **Selective restore** -- restore just the specific changes you want, leaving the rest untouched
 - **Git integration** -- automatically shows git commits alongside File Recovery snapshots on the same timeline (desktop only)

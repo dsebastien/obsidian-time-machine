@@ -187,27 +187,48 @@ export class TimeMachineView extends ItemView {
             },
             onRestoreHunk: (hunkIndex) => {
                 void this.handleRestoreHunk(hunkIndex)
+            },
+            onComparisonModeChange: (mode) => {
+                this.plugin.settings.diffComparisonMode = mode
+                void this.plugin.saveSettings()
+                void this.computeAndRenderDiff()
             }
         })
+
+        // The slider auto-selects the newest snapshot while it renders — before
+        // this.diffViewer exists — so that first onSelect bails out. Render the
+        // initial diff explicitly now that the viewer is in place.
+        if (this.selectedSnapshotIndex !== null) {
+            void this.computeAndRenderDiff()
+        }
     }
 
     private async computeAndRenderDiff(): Promise<void> {
         if (!this.diffViewer || this.selectedSnapshotIndex === null) return
 
-        const snapshot = this.snapshots[this.selectedSnapshotIndex]
+        const index = this.selectedSnapshotIndex
+        const snapshot = this.snapshots[index]
         if (!snapshot || !this.currentFile) return
 
         const currentContent = await this.app.vault.read(this.currentFile)
+        const mode = this.plugin.settings.diffComparisonMode
+
+        // `snapshots` is newest-first, so the chronologically next (newer)
+        // version of snapshots[i] is snapshots[i - 1]. The newest snapshot's
+        // next is the current file content, so both modes agree at index 0.
+        const nextSnapshot = mode === 'next' && index > 0 ? this.snapshots[index - 1] : null
+        const newContent = nextSnapshot ? nextSnapshot.data : currentContent
+        const newLabel = nextSnapshot ? this.formatDiffLabel(nextSnapshot) : 'Current'
 
         const oldLabel = this.formatDiffLabel(snapshot)
         const diff: DiffResult = DiffService.computeDiff(
             snapshot.data,
-            currentContent,
+            newContent,
             oldLabel,
-            'Current'
+            newLabel
         )
 
-        this.diffViewer.render(diff)
+        this.diffViewer.render(diff, mode)
     }
 
     private formatDiffLabel(snapshot: Snapshot): string {
@@ -237,6 +258,10 @@ export class TimeMachineView extends ItemView {
 
     private async handleRestoreHunk(hunkIndex: number): Promise<void> {
         if (this.selectedSnapshotIndex === null || !this.currentFile) return
+        // In `next` mode the displayed hunks relate two historical versions,
+        // not the current file — applying one to the live file is undefined.
+        // The button is hidden in that mode; this guards against stale UI.
+        if (this.plugin.settings.diffComparisonMode === 'next') return
 
         const snapshot = this.snapshots[this.selectedSnapshotIndex]
         if (!snapshot) return

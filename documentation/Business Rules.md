@@ -21,11 +21,11 @@ The plugin requires the File Recovery core plugin to be enabled. If not availabl
 
 ## Restore Safety
 
-Full version restore requires user confirmation via a modal dialog. Hunk restores apply immediately without confirmation.
+Full version restore requires user confirmation via a modal dialog. Hunk restores apply immediately without confirmation. **Hunk restore is unavailable in `next` comparison mode**: the displayed hunks relate two historical versions, so their line numbers and content are not addressed against the current file. The button is hidden in that mode and `handleRestoreHunk` refuses to run as a second guard. Full version restore stays available in both modes (it writes the selected snapshot wholesale).
 
 ## View Behavior
 
-The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event, and also follows the text cursor: a debounced `selectionchange`/`active-leaf-change` handler resolves the focused editor's file (`workspace.activeEditor.file`, falling back to `getActiveFile()`) and switches the view to the note the cursor is in. This supports continuous-scroll plugins (e.g. Daily Notes Editor) that render multiple notes in one leaf where `file-open` does not fire. Cursor-following never clears the view when no file resolves (focus moved to the sidebar/the view itself), and is suppressed entirely while focus is inside the Time Machine view (e.g. dragging its slider) so interacting with the pane never switches the displayed file. It refreshes when the current file is modified (debounced at 1 second). Snapshots are periodically re-fetched from IndexedDB at the file-recovery `intervalMinutes` rate (only when views are open). Users open it manually via the "Open view" command.
+The Time Machine view opens in the right sidebar. It auto-updates when switching files via the `file-open` event, and also follows the text cursor: a debounced `selectionchange`/`active-leaf-change` handler resolves the focused editor's file and switches the view to the note the cursor is in. **Cursor-following resolves ONLY `workspace.activeEditor.file` — never `getActiveFile()`**: notes rendered in a continuous-scroll pane are never "opened" in a leaf, so `getActiveFile()` reports the most recently opened file, which in a split is the other pane's note; falling back to it made interacting with the Time Machine pane switch the view to the wrong note (issue #7). The `getActiveFile()` fallback is allowed only for the initial file when the view first opens. This supports continuous-scroll plugins (e.g. Daily Notes Editor) that render multiple notes in one leaf where `file-open` does not fire. Cursor-following never clears the view when no file resolves (focus moved to the sidebar/the view itself), and is suppressed entirely while focus is inside the Time Machine view (e.g. dragging its slider) so interacting with the pane never switches the displayed file. It refreshes when the current file is modified (debounced at 1 second). Snapshots are periodically re-fetched from IndexedDB at the file-recovery `intervalMinutes` rate (only when views are open). Users open it manually via the "Open view" command.
 
 ## Snapshot Ordering
 
@@ -33,7 +33,10 @@ Snapshots are always sorted descending by timestamp (newest first), regardless o
 
 ## Compare Mode
 
-The plugin compares the live file content against a selected snapshot (current vs version). Users select snapshots via a timeline slider.
+Users select snapshots via a timeline slider. Two comparison modes decide which newer version the selected snapshot is diffed against, toggled in the diff toolbar and persisted to settings (`diffComparisonMode`):
+
+- **`current` (default)**: selected snapshot → live file content. Shows the cumulative drift from that point to now.
+- **`next`**: selected snapshot → the chronologically next (newer) snapshot, per the _filtered_ `snapshots` array so indices stay aligned with the slider. The newest snapshot's "next" is the current file content, so both modes agree at the newest position and there is no missing-"next" edge case.
 
 ## Diff Rendering
 

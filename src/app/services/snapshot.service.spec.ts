@@ -24,6 +24,7 @@ function defaultSettings(overrides?: Partial<PluginSettings>): PluginSettings {
     return {
         gitIntegrationEnabled: true,
         gitMaxCommits: 50,
+        diffComparisonMode: 'current',
         ...overrides
     }
 }

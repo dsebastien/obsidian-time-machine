@@ -1,9 +1,11 @@
 import { setIcon } from 'obsidian'
 import type { DiffHunk, DiffLine, DiffResult } from '../../types/diff.intf'
+import type { DiffComparisonMode } from '../../types/plugin-settings.intf'
 
 export interface DiffViewerCallbacks {
     onRestoreFullVersion: () => void
     onRestoreHunk: (hunkIndex: number) => void
+    onComparisonModeChange: (mode: DiffComparisonMode) => void
 }
 
 export class DiffViewerComponent {
@@ -15,8 +17,13 @@ export class DiffViewerComponent {
         this.callbacks = callbacks
     }
 
-    render(diff: DiffResult | null): void {
+    render(diff: DiffResult | null, mode: DiffComparisonMode = 'current'): void {
         this.container.empty()
+
+        // The mode toggle stays visible even when the active mode reports no
+        // differences — the other mode may well have some.
+        const toolbar = this.container.createDiv({ cls: 'tm-diff-toolbar' })
+        this.renderModeToggle(toolbar, mode)
 
         if (!diff || diff.hunks.length === 0) {
             this.container.createDiv({
@@ -26,17 +33,50 @@ export class DiffViewerComponent {
             return
         }
 
-        this.renderRestoreButton()
+        this.renderRestoreButton(toolbar)
 
+        // Per-hunk restore only makes sense against the current file: in
+        // `next` mode the hunks relate two historical versions, so applying
+        // one to the live file is undefined.
+        const allowHunkRestore = mode === 'current'
         for (let i = 0; i < diff.hunks.length; i++) {
             const hunk = diff.hunks[i]
             if (!hunk) continue
-            this.renderHunk(hunk, i)
+            this.renderHunk(hunk, i, allowHunkRestore)
         }
     }
 
-    private renderRestoreButton(): void {
-        const toolbar = this.container.createDiv({ cls: 'tm-diff-toolbar' })
+    private renderModeToggle(toolbar: HTMLElement, mode: DiffComparisonMode): void {
+        const wrap = toolbar.createDiv({ cls: 'tm-compare-mode' })
+        wrap.createSpan({ cls: 'tm-compare-mode-label', text: 'Compare with' })
+        const group = wrap.createDiv({ cls: 'tm-compare-mode-group' })
+
+        const addModeButton = (target: DiffComparisonMode, text: string, tooltip: string) => {
+            const btn = group.createEl('button', {
+                cls: 'tm-compare-mode-btn' + (mode === target ? ' is-active' : ''),
+                text,
+                attr: { 'aria-label': tooltip }
+            })
+            btn.addEventListener('click', () => {
+                if (target !== mode) {
+                    this.callbacks.onComparisonModeChange(target)
+                }
+            })
+        }
+
+        addModeButton(
+            'current',
+            'Current file',
+            'Everything that changed between the selected version and the file as it is now'
+        )
+        addModeButton(
+            'next',
+            'Next version',
+            'Only what changed between the selected version and the next newer one'
+        )
+    }
+
+    private renderRestoreButton(toolbar: HTMLElement): void {
         const restoreBtn = toolbar.createEl('button', {
             cls: 'tm-restore-full-btn',
             text: 'Restore entire version'
@@ -50,7 +90,7 @@ export class DiffViewerComponent {
         })
     }
 
-    private renderHunk(hunk: DiffHunk, index: number): void {
+    private renderHunk(hunk: DiffHunk, index: number, allowHunkRestore: boolean): void {
         const hunkEl = this.container.createDiv({ cls: 'tm-diff-hunk' })
 
         const hunkHeader = hunkEl.createDiv({ cls: 'tm-diff-hunk-header' })
@@ -59,16 +99,18 @@ export class DiffViewerComponent {
             text: `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`
         })
 
-        const restoreHunkBtn = hunkHeader.createEl('button', {
-            cls: 'tm-restore-hunk-btn clickable-icon',
-            attr: { 'aria-label': 'Restore this hunk' }
-        })
-        setIcon(restoreHunkBtn, 'rotate-ccw')
+        if (allowHunkRestore) {
+            const restoreHunkBtn = hunkHeader.createEl('button', {
+                cls: 'tm-restore-hunk-btn clickable-icon',
+                attr: { 'aria-label': 'Restore this hunk' }
+            })
+            setIcon(restoreHunkBtn, 'rotate-ccw')
 
-        restoreHunkBtn.addEventListener('click', (e) => {
-            e.stopPropagation()
-            this.callbacks.onRestoreHunk(index)
-        })
+            restoreHunkBtn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                this.callbacks.onRestoreHunk(index)
+            })
+        }
 
         const linesEl = hunkEl.createDiv({ cls: 'tm-diff-lines' })
         for (const line of hunk.renderLines) {
