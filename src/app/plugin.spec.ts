@@ -352,5 +352,28 @@ describe('TimeMachinePlugin', () => {
 
             expect(vm.updateForFile).toHaveBeenCalledWith(cursorFile)
         })
+
+        test('never falls back to getActiveFile when no editor is focused (issue #7)', async () => {
+            // Split pane: a continuous-scroll pane (its notes are never "opened"
+            // in a leaf) + a regular note. Clicking the Time Machine slider can
+            // fire a sync while activeEditor is null; getActiveFile() would then
+            // report the OTHER pane's note and wrongly switch the view to it.
+            const vm = createMockView('notes/day-1.md')
+            const plugin = createPlugin([vm], { intervalMinutes: 5 })
+
+            await plugin.onload()
+
+            const internals = plugin as PluginInternals
+            internals.app.workspace.activeEditor = null
+            internals.app.workspace.getActiveFile = () => ({
+                path: 'notes/other-tab.md',
+                name: 'other-tab.md'
+            })
+
+            const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
+            leafChange!.callback(null)
+
+            expect(vm.updateForFile).not.toHaveBeenCalled()
+        })
     })
 })

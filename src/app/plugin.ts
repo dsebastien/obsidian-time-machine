@@ -88,10 +88,11 @@ export class TimeMachinePlugin extends Plugin {
     }
 
     /**
-     * Resolves the file the cursor is currently in, preferring the focused
-     * editor (`activeEditor.file`) over the leaf-level active file. Inside a
-     * continuous scroll the focused editor points at the specific note holding
-     * the caret, whereas `getActiveFile()` returns the leaf's representative file.
+     * Resolves the file to show when the view first opens, preferring the
+     * focused editor (`activeEditor.file`) over the leaf-level active file.
+     * The `getActiveFile()` fallback is only safe here: it returns the most
+     * recently opened file, which is fine as an initial guess but must never
+     * drive cursor-following (see syncToCursorFile).
      */
     resolveActiveFile(): TFile | null {
         return this.app.workspace.activeEditor?.file ?? this.app.workspace.getActiveFile()
@@ -101,16 +102,23 @@ export class TimeMachinePlugin extends Plugin {
      * Switches open views to the file the cursor is in, if it changed. Only
      * acts when a file is resolved so caret moves into non-editor surfaces (the
      * sidebar, the view itself) never clear the displayed history.
+     *
+     * Resolution deliberately trusts ONLY `activeEditor.file` — never
+     * `getActiveFile()`. Notes rendered inside a continuous-scroll pane
+     * (e.g. Daily Notes Editor) are never "opened" in a leaf, so
+     * `getActiveFile()` reports the most recently opened file instead — in a
+     * split that is the *other* pane's note. Any sync firing while
+     * `activeEditor` is momentarily null (focus moving into the sidebar,
+     * `active-leaf-change` during a slider mousedown, ...) would then switch
+     * the view to that other note (issue #7). Regular tab switches are already
+     * covered by the `file-open` event, so no fallback is needed here.
      */
     private syncToCursorFile(): void {
-        // Skip when the user is interacting with the Time Machine view itself
-        // (e.g. dragging the timeline slider). In a split with a continuous-scroll
-        // pane and a regular note, resolving the "active" file at that moment would
-        // point at the other tab and wrongly switch the view away from the note the
-        // caret is in.
+        // Extra belt: skip while the user is interacting with the Time Machine
+        // view itself (e.g. dragging the timeline slider).
         if (this.isFocusInsideOwnView()) return
 
-        const file = this.resolveActiveFile()
+        const file = this.app.workspace.activeEditor?.file ?? null
         if (!file) return
 
         for (const view of this.getActiveViews()) {
