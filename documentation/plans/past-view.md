@@ -1,181 +1,261 @@
 # Plan: Past view (in-editor time travel + side-by-side compare)
 
 Implements the in-editor timeline and side-by-side parts of issue #9.
-Export-to-markdown and note embedding are **out of scope** here — filed as separate issues.
+Export-to-markdown and note embedding are out of scope — see #10, #11, #12.
+
+Revised after an adversarial review (26 findings). The headline change: **the reusable pieces
+this plan depends on are currently private to `TimeMachineView`**, so extraction comes first,
+as Phase 0, before either view is rewired.
 
 ## Goal
 
-A read-only "past view" leaf that opens in a native vertical split to the **left** of the
-live editor. Its header carries a rich Apple-Time-Machine-style timeline bar; scrubbing it
-shows that version of the note. A diff switch in the same header flips the body between the
-rendered old version and the existing unified diff viewer. The right pane stays the user's
-real, editable note — Obsidian's own splitter provides the adjustable 50/50.
+A read-only "past view" leaf inserted before the leaf holding the live editor. Its header
+carries a timeline bar; scrubbing shows that version of the note. A diff switch flips the body
+between the rendered old version and the existing unified diff viewer. The right pane stays the
+user's real, editable note.
 
-"Past view" and "side-by-side" are the **same view**. Side-by-side is just this view opened
-in a split; full-width is the same view opened as a tab. No second view type.
+"Past view" and "side-by-side" are the **same view** — side-by-side is this view opened in a
+split, full-width is the same view opened as a tab. No second view type.
 
 ## Core decisions (locked)
 
-| Decision             | Choice                                                                | Why                                                                                                 |
-| -------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Right column         | The real editor, via native split                                     | A live `MarkdownView` cannot be embedded in a custom view. Split gives editability + free splitter. |
-| Left body (diff off) | `MarkdownRenderer.render` of the old version, read-only               | Looks like the note did then.                                                                       |
-| Left body (diff on)  | Existing `DiffViewerComponent` replaces the render                    | Zero new diff logic; per-hunk restore keeps working.                                                |
-| Live file            | Never written to for display purposes                                 | Swapping editor content would dirty the file, fire `modify`, and pollute file-recovery.             |
-| File binding         | Pinned to the note it was opened for, with a pin/follow toggle        | Avoids the issue #7 wrong-file resolution class entirely.                                           |
-| Sidebar view         | Kept, shares components                                               | No breaking change for 1.4.0 users' saved layouts.                                                  |
-| `diffComparisonMode` | Single shared plugin setting, both views                              | One source of truth, already persisted.                                                             |
-| Timeline             | New rich `TimelineBar`, responsive, replaces the slider in BOTH views | One component to maintain and test.                                                                 |
+| Decision             | Choice                                                  |
+| -------------------- | ------------------------------------------------------- |
+| Right column         | The real editor, via native split                       |
+| Left body (diff off) | `MarkdownRenderer.render` of the old version, read-only |
+| Left body (diff on)  | Existing `DiffViewerComponent`                          |
+| Live file            | Never written to for display purposes                   |
+| File binding         | Bound to one note by default, with a follow toggle      |
+| Sidebar view         | Kept, shares components                                 |
+| `diffComparisonMode` | Single shared plugin setting, both views                |
+| Timeline             | New responsive `TimelineBar`, shared by both views      |
 
-## Work breakdown
+### Terminology: "bound", not "pinned"
 
-### 1. `TimelineBar` component (shared)
+`ViewState` already has a `pinned?: boolean` — Obsidian's own leaf pinning, which stops a leaf
+being reused for navigation. That is a **different concept** from "this view shows one fixed
+note". Use `boundToFile` in state and "Follow active note" for the UI toggle. Separately, do set
+Obsidian's `pinned: true` on the leaf so navigation does not hijack it.
 
-Replaces `TimelineSliderComponent`. Same `onSelect(snapshot, index)` contract so the sidebar
-view swaps over with no logic change.
+## Open decision — needs sign-off before Phase 2
 
-- Ticks: one per snapshot, positioned **proportionally to timestamp**, not evenly by index —
-  otherwise a burst of 20 file-recovery saves in one minute looks like a month of history.
-- Per-tick source icon (`clock` / `git-branch`), tooltip with full date + commit metadata.
-- Selected tick emphasised; left = newest, right = oldest (preserves existing orientation).
-- Prev/next buttons and `ArrowLeft` / `ArrowRight` keyboard stepping when focused.
-- Responsive via `ResizeObserver` + container queries: below a width threshold, labels drop,
-  then ticks collapse to a plain range input. The sidebar lands in the collapsed tier by default.
-- Ticks closer than a minimum pixel gap **merge into a cluster tick**; stepping still visits
-  every snapshot. Prevents an unusable smear of overlapping ticks on dense histories.
-- Hidden entirely when `snapshots.length <= 1`, matching the existing business rule.
+`MarkdownRenderer.render` runs every registered markdown post-processor. Rendering a historical
+version therefore executes any `dataviewjs` (arbitrary JS), Dataview queries (against the
+_current_ index), and whatever else the user has installed. There is no safe mode on the API,
+and sanitising the DOM afterwards is useless because execution already happened.
 
-Tests: proportional positioning, clustering threshold, keyboard stepping across clustered
-ticks, responsive tier selection, single-snapshot hiding, selection-by-id preservation.
+This is not hypothetical: a historical version may contain a `dataviewjs` block the user has
+since deleted. Scrubbing the timeline would silently re-execute it.
 
-### 2. `PastView` (new `ItemView`)
+**Proposed default (needs approval):** render via `MarkdownRenderer`, but first neutralise
+executable blocks — `dataviewjs`, `dataview`, `templater-js`, and `<script>` — by rewriting
+them to inert fenced code blocks before rendering, so they display as source. A setting
+(`pastViewExecuteBlocks`, default `false`) opts back into full execution.
 
-New view type `time-machine-past-view`.
+Alternatives, both worse: render everything (surprising and genuinely unsafe), or render plain
+source only (contradicts the locked "rendered markdown" decision).
 
-**State** (`getState`/`setState`, so it survives restart and workspace restore):
-`{ filePath: string, pinned: boolean, snapshotId: string | null, showDiff: boolean }`.
-Selection persists by **snapshot id, not index** — indices shift as snapshots are added,
-dropped by dedup, or filtered against current content.
+Phase 2 does not start until this is settled.
 
-**Header** (left column header, always visible):
+## Phase 0 — Extraction (no user-visible change)
 
-- File name + snapshot count.
-- `TimelineBar`.
-- Selected-version label (date, source, commit hash/message/author for git).
-- `Show diff` switch.
-- `Compare with: Current file / Next version` toggle — the existing shared segmented control.
-- Pin/follow toggle.
-- Action menu: Restore entire version · Restore hunk (contextual) · Copy old version ·
-  Open old version as a new note.
+None of the following is reachable from a second view today. Extract first:
 
-**Body**: rendered old version, or `DiffViewerComponent`, per the diff switch.
+- `selectedSnapshotIndex` and the snapshot session (file, allSnapshots, filtered snapshots,
+  selection, fetch/filter/diff logic) are private to `TimeMachineView`
+  (`time-machine-view.ts:19-21`). Extract a `SnapshotSession` holding this, owned by each view.
+- `ConfirmModal` is a file-private class (`time-machine-view.ts:293`). Move to
+  `ui/components/confirm-modal.ts`.
+- `DiffViewerComponent` unconditionally renders its own toolbar, comparison toggle, and
+  full-restore button (`diff-viewer.ts:23-36`, both private helpers). Extract the comparison
+  toggle into a shared control the header can own, and reduce the viewer to body + hunks.
+  **Per-hunk restore stays on each hunk** — a header-level "restore hunk" action has nothing to
+  address.
+- `getActiveViews()` filters to the sidebar `VIEW_TYPE` only (`plugin.ts:142`), and `file-open`
+  updates every result (`plugin.ts:30-36`). Split into three capabilities: _poll_, _content
+  refresh_, _active-file follow_. The sidebar follows; a past view follows only when unbound.
+  The `activeEditor.file`-only cursor rule from Business Rules stays.
+- No mechanism propagates `diffComparisonMode` between views — the change handler recomputes
+  only its own view (`time-machine-view.ts:191`). Centralise mode changes on the plugin and
+  broadcast to every open history view.
+- Snapshot fetching runs a sequential `git show` per commit, up to `gitMaxCommits`
+  (`snapshot.service.ts:66-70`), and the poll calls `updateForFile` per view independently
+  (`plugin.ts:76`). A sidebar + past view on one note doubles it to 100 subprocesses per poll.
+  Coalesce in-flight requests and cache per `(path, settings generation)`, then fan out.
 
-**Empty states**: reuse `renderEmptyState`. Per issue #9, when a note has no snapshots the
-timeline, diff switch, and action menu are **not rendered at all** — only the empty state.
+Two correctness bugs surface here that also affect the shipped sidebar; fix them in the shared
+code rather than duplicating them:
 
-### 3. Opening
+- **Stale async results.** `updateForFile` sets `currentFile`, awaits slow git work, then
+  assigns results without rechecking (`time-machine-view.ts:89`); diff reads are equally
+  unversioned (`:206`). Rapid switching can render an older request last. Add monotonic request
+  generations to snapshot fetch, content reads, diff computation, and markdown rendering, and
+  discard stale completions.
+- **Hunk restore can apply the wrong hunk.** The callback carries only `hunkIndex`
+  (`time-machine-view.ts:188`); on click, content is re-read (`:269`) and the diff recomputed
+  before applying that ordinal (`restore.service.ts:20`). Editing beside the view during the 1s
+  debounce reorders hunks. Capture the exact content revision the diff was rendered from; if it
+  changed, refuse and refresh instead of applying a stale ordinal.
 
-`openPastView(app, file, opts)` helper, used by every entry point:
+## Phase 1 — `TimelineBar`
 
-- Locate the leaf currently showing `file` (or the active leaf).
-- `workspace.createLeafBySplit(targetLeaf, 'vertical', true)` → new leaf to the **left**.
-- `leaf.setViewState({ type: 'time-machine-past-view', state: { filePath, pinned: true, ... } })`.
-- If a past view for that file already exists, reveal and refocus it instead of opening a second.
-- Mobile / narrow workspace: no split — open as a tab (`getLeaf('tab')`). This is the
-  "in-editor past view" experience on mobile and it needs no extra code.
+Replaces `TimelineSliderComponent` in both views. A **controlled** component: it accepts
+`selectedSnapshotId` and renders that selection; it emits changes only for user actions and
+never auto-selects. Default/fallback selection belongs to the owning session — the current
+component auto-selects index 0 as a render side effect (`timeline-slider.ts:95`) and is
+recreated on every render (`time-machine-view.ts:176`), so internal selection cannot survive.
 
-Entry points (all four):
+- Ticks positioned **proportionally to timestamp**, not evenly by index. Define zero-span
+  behaviour (all snapshots share a timestamp → fall back to even spacing; never divide by zero).
+- Ticks closer than a minimum pixel gap merge into a **cluster tick**. Specify: what a cluster
+  click selects (its newest member), how a selected snapshot inside a cluster is indicated, and
+  that keyboard stepping still visits every snapshot individually.
+- Per-tick source icon; mixed-source clusters get a defined representative icon.
+- Prev/next buttons, `ArrowLeft`/`ArrowRight` when focused, defined focus retention across
+  re-render, and an explicit ARIA model.
+- Responsive tiers driven by **`View.onResize()`** (`obsidian.d.ts:6629`) — the native hook —
+  not `ResizeObserver`. If an observer is still needed, `TimelineBar` must be a managed
+  `Component` that disconnects on unload and re-render, instantiated from the element's own
+  window so popout windows work. Pick **one** mechanism as the source of truth for tier
+  selection; if container queries are used, `container-type` must actually be set.
+- Per the existing business rule, with one snapshot **only the ticks/range/navigation are
+  hidden** — the selected-version information and the diff still render, and the sole snapshot
+  is still selected.
 
-- Command: `Open Time Machine for current note`.
-- Button in the sidebar view header — promotes, carrying current file **and** selected snapshot.
-- File menu (`file-menu` and `editor-menu`): `Open in Time Machine`.
-- Ribbon icon (`clock`).
+**Testability:** layout is a pure function — `(snapshots, width) → {ticks, clusters, tier}` —
+tested directly. The existing mocks store no child tree, geometry, or handlers
+(`time-machine-view.spec.ts:14`, `diff-viewer.spec.ts:16`, `test-setup.ts:16`), so DOM-level
+assertions need new fake-geometry infrastructure; keep as little as possible in the DOM layer.
 
-### 4. Actions
+## Phase 2 — `PastView`
 
-- **Restore entire version** — existing `RestoreService.restoreFullVersion` + confirm modal.
-- **Per-hunk restore** — only when diff is ON **and** mode is `current`. Hidden otherwise;
-  the handler refuses as a second guard, per the existing Restore Safety business rule.
-- **Copy old version** — `navigator.clipboard.writeText` + `Notice`.
-- **Open old version as a new note** — writes `<basename> (yyyy-MM-dd HH-mm).md` beside the
-  original, no prompt. Collisions get a numeric suffix. Uses `vault.create`, then opens it in
-  a new tab. Note: this is the plugin's first write of a _new_ file — call it out in the README.
+View type `time-machine-past-view`. Blocked on the rendering decision above.
 
-### 5. Live sync
+**Persisted state**: `{ filePath, boundToFile, snapshotId, snapshotTimestamp, showDiff }`.
+The timestamp is persisted **alongside** the id because the "nearest surviving snapshot"
+fallback needs it after a restart, when the vanished snapshot is no longer available to read a
+timestamp from. Validate both on load; state arrives as `unknown` (`obsidian.d.ts:6608`).
+Normalise it, merge defaults without clobbering a valid `false`, and call the debounced
+`workspace.requestSaveLayout()` (`obsidian.d.ts:6751`) after every persistent mutation —
+`setState` alone does not schedule a save.
 
-- **Diff refresh**: on `vault.modify` of the pinned file, debounced 1s, re-diff against the new
-  content. Only when comparison mode is `current` (in `next` mode the live file is irrelevant).
-- **Snapshot refresh**: hook the existing file-recovery interval re-fetch. Timeline re-renders;
-  selection preserved by snapshot id; if the selected snapshot vanished (dedup/filtering),
-  fall back to the nearest surviving one by timestamp.
-- **Scroll sync**: ship **behind a setting, default off**, and last. Rendered-markdown block
-  offsets do not map cleanly to editor lines. Approach: map the top visible rendered block to
-  its source line via the diff's line accounting, then `editor.scrollIntoView`. If it proves
-  janky in manual testing, ship the feature without it and file a follow-up rather than
-  shipping a bad sync.
+**Header**: file name + count · `TimelineBar` · selected-version label (date, source, commit
+metadata) · diff switch · shared comparison control · follow toggle · actions menu.
 
-### 6. Settings
+**Body**: rendered old version, or `DiffViewerComponent`.
 
-New section "Past view":
+**Rendering lifecycle**: the fifth argument to `MarkdownRenderer.render` is _the parent that
+manages the rendered children_ (`obsidian.d.ts:3939`) — emptying the container does not unload
+it. Create one child `Component` and one fresh container per render, `addChild` it to the view,
+and `removeChild` the previous one (`obsidian.d.ts:1811`) before replacing. Guard async
+completion with a render generation.
 
-- `pastViewEnabled` (default true) — hides the command, ribbon, and menu items when off.
-- `pastViewDefaultShowDiff` (default false).
-- `pastViewScrollSync` (default false).
-- `timelineBarRichMode` (default true) — escape hatch back to the plain slider.
+**Rendering semantics**: this is _historical source rendered against the current vault_ —
+embeds, links, Dataview results and metadata all resolve to today's vault, not to how they
+looked then. Say so in the UI copy rather than implying a faithful time capsule. Apply
+`markdown-preview-view markdown-rendered` classes; there is currently no CSS for a rendered
+body.
 
-### 7. Documentation
+**Empty state**: with no snapshots, the timeline, switches and actions are not rendered at all.
 
-- `documentation/Architecture.md`: new UI section for `PastView` + `TimelineBar`; note that
-  `TimelineSliderComponent` is superseded.
-- `documentation/Domain Model.md`: `PastViewState`.
-- `documentation/Business Rules.md`: new rules — Past View Placement, Past View Pinning,
-  Read-only Guarantee, Selection Identity (id not index), plus the mobile fallback.
-- `documentation/history/<today>.md`.
-- `docs/usage.md` + `README.md`: the new view, entry points, settings.
+## Phase 3 — Opening
+
+`openPastView(app, file)`:
+
+1. Narrow to a markdown `TFile`. `file-menu` hands over a `TAbstractFile` (`obsidian.d.ts:7058`)
+   and editor context exposes `file: TFile | null` (`obsidian.d.ts:3757`).
+2. Search **root** leaves for a `MarkdownView` showing exactly that file. If none, open the file
+   in a root editor leaf first. Never split the active leaf blindly — it may be a sidebar,
+   another past view, or an unrelated note.
+3. `createLeafBySplit(targetLeaf, 'vertical', true)`. The signature
+   (`obsidian.d.ts:6794`) documents neither geometry nor sizing: `before: true` **inserts before
+   the target**, which is visually left in standard LTR layouts. Not guaranteed under RTL or
+   stacked tabs, and restored layouts keep their saved dimensions rather than 50/50. Document
+   these as limitations; verify manually.
+4. Reuse an existing past view for the same file rather than opening a second. Detect via
+   `leaf.getViewState()`, not `leaf.view` — deferred leaves expose a `DeferredView`
+   (`obsidian.d.ts:7222`).
+5. Mobile / narrow workspace: open as a tab instead of splitting.
+
+Entry points: command · sidebar header button (carrying file **and** selection) · `file-menu`
+and `editor-menu` · ribbon icon. Command name must **not** contain "Time Machine" — Obsidian
+prefixes commands with the plugin name and AGENTS.md:254 forbids it. Use id
+`open-past-view`, name **"Open past view for current note"**.
+
+Workspace restore is only claimed for _restart with the plugin still enabled_. Register the view
+before layout restoration. Unknown-view-type handling is internal Obsidian behaviour, not API.
+A restored view whose file was deleted or renamed shows an empty state, not a crash.
+
+## Phase 4 — Actions
+
+Restore entire version (shared confirm modal) · per-hunk restore (diff ON + `current` mode only,
+with the revision guard from Phase 0) · copy old version · open old version as a new note.
+
+Open-as-note writes `<basename> (yyyy-MM-dd HH-mm).md` beside the original with no prompt.
+`vault.create` rejects when the path exists (`obsidian.d.ts:6344`), so catch and retry with a
+numeric suffix rather than pre-checking — pre-checking races. Normalise root-folder paths.
+Surface clipboard, permission and open failures through `Notice`. This is the plugin's first
+creation of a new file; call it out in the README.
+
+## Phase 5 — Live sync
+
+- **Content changes**: on `vault.modify` of the bound file (debounced 1s), always re-read and
+  re-filter. The plan previously skipped this in `next` mode — that was **wrong**: the newest
+  snapshot's "next" target _is_ the live file (Business Rules, `time-machine-view.ts:219`), and
+  current content also drives snapshot filtering. Recompute in `current` always, in `next` when
+  index 0 is selected, and whenever filtering changes the selection or its neighbour.
+- **Snapshot refresh**: via the coalesced fetch from Phase 0. Selection preserved by id, falling
+  back to nearest surviving timestamp. Define tie-breaking and what happens when dedup replaces
+  the selected snapshot with an identical-content newer one.
+
+## Phase 6 — Settings and docs
+
+Settings ship **with the feature that consumes them**, not batched at the end:
+`pastViewEnabled`, `pastViewDefaultShowDiff`, `pastViewExecuteBlocks`, `timelineBarRichMode`.
+Note that `timelineBarRichMode` as a fallback requires _keeping_ the old slider, which
+contradicts "supersedes" — either drop the fallback or keep both components deliberately.
+
+Docs: `Configuration.md` (canonical settings list — every setting and default), `Architecture.md`,
+`Domain Model.md` (`PastViewState`, `SnapshotSession`), `Business Rules.md`, `docs/usage.md`,
+`README.md`, `documentation/history/<today>.md`. Close or delete this plan when done.
 
 ## Sequencing
 
-Each step lands green (`tsc`, `lint`, `test`, `build`) on its own.
+Vertical slices — each lands with its setting, types, UI, docs and tests together:
 
-1. `TimelineBar` + tests, behind `timelineBarRichMode`, wired into the **sidebar** view first.
-   Proves the component in the existing surface before any new view exists.
-2. `PastView` skeleton: view registration, state, header, rendered old version, timeline.
-   No diff, no actions.
-3. Diff switch → `DiffViewerComponent` reuse.
-4. Entry points + `openPastView` helper + existing-leaf reuse + mobile tab fallback.
-5. Actions (restore full, hunk, copy, open-as-note).
-6. Live sync (diff refresh, snapshot refresh).
-7. Settings + documentation.
-8. Scroll sync, behind its setting. Cut it if it feels bad.
+0. Extraction + the two shared correctness fixes. No user-visible change; existing tests stay green.
+1. `TimelineBar` (controlled, pure layout core) wired into the sidebar.
+2. Rendering decision → `PastView` skeleton.
+3. Diff switch.
+4. Opening + entry points.
+5. Actions.
+6. Live sync.
+7. Settings/docs consolidation and plan closure.
 
-## Risks
+The previous ordering claimed each step landed green while step 1 depended on a setting not
+introduced until step 7, and separated docs from behaviour despite AGENTS.md:30 requiring docs
+with each change. That is fixed here.
 
-- **`MarkdownRenderer.render` lifecycle** — must be passed a `Component` that is properly
-  unloaded, or embeds/dataview/mermaid inside old versions leak. Register the render child on
-  the view and clear on every re-render.
-- **Rendering old versions has side effects** — a historical version may contain Dataview or
-  Templater blocks that execute on render. Consider a setting to render as plain source, and
-  verify what a `dataviewjs` block does when rendered from a past version.
-- **`sourcePath` for rendering** — passing the real path makes relative links and embeds
-  resolve correctly, but also makes the rendered old version look "live". Correct call is to
-  pass the real path and rely on the read-only container.
-- **Split direction on RTL / stacked-tab layouts** — `before: true` may not land visually left.
-  Verify manually.
-- **Two past views for two notes** — supported; each is pinned, no shared state beyond settings.
-- **Workspace restore** — the view restores from `setState` for a file that may have been
-  deleted or renamed. Handle missing file with an empty state, not a crash.
+## Deferred
+
+**Scroll sync is not in this plan.** The public API is
+`scrollIntoView(range: EditorRange, center?: boolean)` (`obsidian.d.ts:2349`) — it needs
+`{from,to}` positions, not a line. There is no public editor-scroll event, no way to resolve the
+adjacent editor once focus moves left, no historical→current line mapping, and rendered blocks
+carry no source-line metadata. Filed separately; needs a prototype before any setting is
+documented.
 
 ## Verification
 
-Automated: `bun run tsc`, `bun run lint`, `bun test`, `bun run build`.
+`bun run tsc`, `bun run lint`, `bun test`, `bun run build`.
 
-**Manual (agents cannot self-verify this — GUI):**
+New tests: state normalisation and restoration, teardown/unload, stale async discarding,
+bound/follow routing, mode broadcast across views, split targeting, filename collision,
+executable-block gating, and pure timeline layout (positioning, clustering, zero-span,
+keyboard stepping).
 
-- Split really opens to the left of the note, splitter drags.
-- Scrubbing updates the left pane; diff switch flips body; both restore paths work.
-- Editing the right pane updates the left diff after ~1s.
-- Pin toggle: pinned view ignores file switches; unpinned follows.
-- Sidebar + past view open simultaneously stay consistent on `diffComparisonMode` changes.
-- Mobile: opens as a tab, timeline collapses, no split.
-- Note with zero snapshots shows only the empty state — no timeline, no switches.
-- Restart with the view open: correct file and snapshot restored.
+**Manual (GUI — not self-verifiable):** split lands left and drags · scrubbing updates the body ·
+diff switch flips it · both restore paths · editing the right pane updates the left after ~1s ·
+follow toggle · both views agree on comparison mode · mobile opens a tab · zero-snapshot note
+shows only the empty state · restart restores file and snapshot · popout window · RTL/stacked
+layouts · a historical `dataviewjs` block does **not** execute with the default setting.
