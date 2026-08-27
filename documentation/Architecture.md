@@ -45,7 +45,7 @@ Two views, one shared core. Both implement `HistoryView` so the plugin routes to
 
 - **TimeMachineView**: ItemView in the right sidebar. Compact surface; always follows the active file.
 - **PastView**: main-area ItemView showing a note as it was at a chosen version. Opened in a native split _before_ the leaf holding the live editor (visually left in LTR), so the right pane stays the user's real, editable note. Opens as a tab on mobile or in a narrow workspace. Bound to its file by default.
-- **TimelineBarComponent**: controlled timeline; ticks positioned proportionally to timestamp, clustering for dense histories, keyboard stepping, responsive tiers via `onResize`. Renders the selection it is given and never auto-selects — the session owns selection. Replaces the old `TimelineSliderComponent`.
+- **TimelineBarComponent**: the version rail. Equal, fixed-width segments — one per version, never merged — grouped under time buckets, with a single shared segment width computed per render so every bucket draws identically. Scrolls when segments no longer fit and keeps the selection in view. Keyboard: arrows step, PageUp/PageDown by ten, Home/End to the edges. Controlled — it renders the selection it is given and never auto-selects. Replaces the old `TimelineSliderComponent`.
 - **DiffViewerComponent**: diff body and per-hunk restore only. The comparison control and full-restore button belong to the owning view's header.
 - **renderComparisonModeControl / renderRestoreFullButton**: shared header controls.
 - **EmptyState**: Contextual empty messages
@@ -56,7 +56,7 @@ Two views, one shared core. Both implement `HistoryView` so the plugin routes to
 1. File-open event → plugin routes to every view whose `followsActiveFile()` is true → `updateForFile(file)`
 2. `SnapshotSession` fetches via `SnapshotCache` (coalescing) → `SnapshotService.getSnapshots()` (file-recovery + git if enabled)
 3. Filter out snapshots identical to current file content; reconcile the selection (same id, else nearest surviving timestamp, else newest)
-4. User scrubs the timeline → session computes the diff for the selection under the active comparison mode
+4. User picks a version on the rail → session computes the diff for the selection under the active comparison mode
 5. Sidebar renders the diff; the past view renders either the diff or the neutralised markdown of the old version
 6. User clicks restore → RestoreService modifies the file via the vault API (same for both sources)
 

@@ -517,6 +517,9 @@
 .tm-rail-row {
     @apply flex items-end;
     gap: 0.25rem;
+    /* Nothing in the row may change size on hover, or the details line below
+       would shift too. */
+    min-height: 34px;
 }
 
 .tm-rail-nav {
@@ -530,15 +533,27 @@
     color: var(--text-normal);
 }
 
-/* The rail itself: one flex row of time-bucket groups. */
+.tm-rail-nav:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* The rail: one flex row of time-bucket groups.
+
+   Segments are a FIXED width rather than flex-1. Sharing the width out meant a
+   bucket holding one version drew a fatter segment than a bucket holding
+   twenty, because each bucket was its own flex-sizing context subtracting its
+   own gaps — and a note with two versions drew two enormous slabs. Fixed
+   widths make every version identical whatever its neighbours do, and the rail
+   scrolls once they no longer fit. */
 .tm-rail {
     @apply flex flex-1 items-end;
     gap: 0.75rem;
     min-width: 0;
-    border-radius: var(--radius-s);
-    /* A note can hold hundreds of file-recovery snapshots. Rather than shrink
-       segments below a clickable size — which silently put most versions out of
-       reach — the rail scrolls and keeps the selection in view. */
+    padding-bottom: 3px;
+    /* One baseline under the whole rail. Bordering each bucket produced
+       disconnected underlines separated by the inter-group gaps. */
+    border-bottom: 1px solid var(--background-modifier-border);
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
@@ -554,16 +569,6 @@
     border-radius: 3px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .tm-rail {
-        scroll-behavior: auto;
-    }
-
-    .tm-rail-segment {
-        transition: none;
-    }
-}
-
 .tm-rail:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 3px;
@@ -573,66 +578,105 @@
     @apply flex flex-col shrink-0;
     gap: 0.25rem;
     min-width: 0;
-    /* flex-grow is set inline, in proportion to how many versions the group
-       holds, so a busy day reads as busy without squeezing anything out. */
-    flex-basis: 0;
 }
 
-.tm-rail-group-label {
-    @apply truncate;
-    font-size: 10px;
+/* A button, but it must read as a caption: clicking jumps to that bucket.
+   The doubled class raises specificity over Obsidian's own `button` rules,
+   which otherwise paint it as a full-width filled control. */
+.tm-rail-group-label.tm-rail-group-label {
+    @apply cursor-pointer truncate;
+    display: block;
+    width: auto;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    height: auto;
     line-height: 1.3;
+    text-align: left;
+    font-size: 10px;
+    font-weight: inherit;
     letter-spacing: 0.03em;
     text-transform: uppercase;
     color: var(--text-faint);
+}
+
+.tm-rail-group-label.tm-rail-group-label:hover {
+    color: var(--text-normal);
+    background-color: transparent;
+    box-shadow: none;
 }
 
 .tm-rail-track {
     @apply flex items-end;
     gap: 2px;
     min-width: 0;
-    /* A faint baseline ties the groups together so the rail reads as one
-       control rather than several disconnected blocks. */
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: 3px;
+    /* Fixed height, with segments anchored to the bottom. Segments change
+       height on hover and when selected; if the track sized itself to its
+       content, every hover would resize the group and shove the bucket label
+       above it up and down. A fixed track means a segment can only grow
+       upwards into space that is already reserved, so nothing else moves. */
+    height: 30px;
 }
 
-/* One version. Equal width, so every version stays reachable no matter how
-   the timestamps are distributed. */
+/* One version. */
 .tm-rail-segment {
-    @apply flex-1 cursor-pointer;
-    /* Small, but the rail scrolls rather than going below this, so every
-       version keeps a real hit target. Arrow keys and the nav buttons are the
-       precise path for dense histories. */
-    min-width: 6px;
-    height: 20px;
+    @apply relative shrink-0 cursor-pointer;
+    /* One shared width for the whole rail, computed once per render so every
+       bucket draws identical segments. The fallback matters only for the first
+       frame, before the rail has been measured. */
+    width: var(--tm-segment-width, 14px);
+    height: 18px;
     border-radius: 2px;
-    background-color: var(--background-modifier-border);
+    /* A solid token, not a translucent one: opacity as an encoding drops
+       contrast unpredictably across themes. */
+    background-color: var(--text-faint);
     transition:
         background-color 100ms ease-out,
         height 100ms ease-out;
 }
 
-.tm-rail-segment:hover {
-    background-color: var(--background-modifier-border-hover);
-    height: 24px;
+/* Invisible hit area, larger than the rectangle it belongs to. It reaches
+   exactly half the 2px gap on each side, so neighbouring targets meet without
+   overlapping and never steal each other's clicks. */
+.tm-rail-segment::before {
+    content: '';
+    position: absolute;
+    inset: -8px -1px;
 }
 
-/* Git commits read as deliberate save points; file-recovery ones are ambient. */
+.tm-rail-segment:hover {
+    background-color: var(--text-muted);
+    height: 23px;
+}
+
+/* Git commits are deliberate save points; file-recovery ones are ambient.
+   Encoded by colour AND by a cap along the top edge, so the distinction
+   survives greyscale, colour-blindness and forced-colours modes. */
 .tm-rail-segment.is-git {
     background-color: var(--text-accent);
-    opacity: 0.45;
+    border-top: 3px solid var(--text-normal);
 }
 
-.tm-rail-segment.is-git:hover {
-    opacity: 0.7;
-}
-
-.tm-rail-segment.is-selected,
-.tm-rail-segment.is-selected:hover {
+.tm-rail-segment.is-selected {
     background-color: var(--interactive-accent);
-    opacity: 1;
-    height: 28px;
+    height: 26px;
+}
+
+.tm-rail-segment.is-selected:hover {
+    height: 30px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tm-rail {
+        scroll-behavior: auto;
+    }
+
+    .tm-rail-segment {
+        transition: none;
+    }
 }
 
 .tm-rail-details {

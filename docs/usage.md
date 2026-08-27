@@ -21,7 +21,8 @@ On mobile, or when the window is too narrow to split usefully, it opens as a ful
 
 Once open:
 
-- **Scrub the timeline** at the top to move through versions. Ticks sit where the version actually falls in time, so a flurry of edits looks like a flurry. Versions saved within moments of each other merge into one tick; the arrow keys still step through every single one.
+- **Click a version** on the rail at the top. Every version gets its own mark -- none are merged away -- grouped under headings like Today, 7 days, 30 days and then by year. Hovering a mark tells you exactly which version it is, and clicking a heading jumps to the newest version in that group.
+- **Keyboard**: focus the rail, then arrow left/right to step one version, PageUp/PageDown to move ten at a time, Home for the newest and End for the oldest.
 - **Show changes** flips the pane between the old version and the diff.
 - **Follow / bind** (the pin button) decides whether the pane stays on this note or follows whatever you open. It stays bound by default.
 - **The menu** (⋮) restores the whole version, copies it, or saves it as a new note beside the original.
@@ -41,15 +42,18 @@ This is deliberate. Rendering an old version would otherwise execute that code a
 
 ## Browsing snapshots
 
-When a file has multiple snapshots with differences from the current content, a **timeline slider** appears at the top of the panel.
+When a file has multiple versions that differ from the current content, a **version rail** appears at the top of the panel.
 
-- The **left end** of the slider is the most recent snapshot
-- The **right end** is the oldest snapshot
-- Drag the slider to select a snapshot
-- The selected snapshot's date and relative time are displayed below the slider
-- Edge labels show the dates of the newest and oldest available snapshots
+- The **left end** is the most recent version, the **right end** the oldest
+- Every version is its own mark, sized the same regardless of how far apart in time they are
+- Marks are grouped under time headings; click a heading to jump to that group
+- Git commits are tinted and carry a cap along the top edge; file-recovery snapshots are plain
+- Hover any mark for its position, exact time, and (for git) the commit and its message
+- The selected version's position, age and source appear below the rail
 
-When there is only one snapshot with differences, the slider is hidden and the diff is shown directly.
+With a long history the rail scrolls, and the selected version is kept in view.
+
+When there is only one version with differences, the rail is hidden and the diff is shown directly.
 
 ### Source indicators
 
@@ -77,8 +81,8 @@ By default, the diff view shows what changed between the selected snapshot and y
 
 A **Compare with** toggle at the top of the diff view picks which newer version the selected snapshot is compared against:
 
-- **Current file** (default) -- everything that changed between the selected version and the file as it is now. Scrubbing into the past shows the _cumulative_ drift up to today.
-- **Next version** -- only what changed between the selected version and the next newer one, like Obsidian's core File Recovery. Scrubbing steps through the _incremental_ change of each version.
+- **Current file** (default) -- everything that changed between the selected version and the file as it is now. Stepping into the past shows the _cumulative_ drift up to today.
+- **Next version** -- only what changed between the selected version and the next newer one, like Obsidian's core File Recovery. Stepping moves through the _incremental_ change of each version.
 
 For the newest snapshot both modes show the same thing (its "next version" is the current file). Your last choice is remembered across sessions.
 

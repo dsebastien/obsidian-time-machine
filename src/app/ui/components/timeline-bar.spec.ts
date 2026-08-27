@@ -98,7 +98,7 @@ describe('TimelineBarComponent', () => {
         bar.render([snap('a', now - MINUTE), snap('b', now - 400 * 86_400_000)], 'a')
 
         expect(rec.texts).toContain('Today')
-        expect(rec.texts).toContain('Older')
+        expect(rec.texts).toContain(String(new Date(now - 400 * 86_400_000).getFullYear()))
     })
 
     test('shows the position within the history', () => {
@@ -156,11 +156,12 @@ describe('TimelineBarComponent', () => {
 
         const attrs = rec.attrsByClass.get('tm-rail') ?? {}
         expect(attrs['role']).toBe('slider')
-        expect(attrs['aria-valuemin']).toBe('0')
-        expect(attrs['aria-valuemax']).toBe('2')
-        // 'b' is the middle of three, oldest..newest.
-        expect(attrs['aria-valuenow']).toBe('1')
-        expect(attrs['aria-valuetext']).toBeDefined()
+        // The value follows visual position: 1 is the leftmost (newest)
+        // segment, so ArrowRight increases it, and Home/End map to min/max.
+        expect(attrs['aria-valuemin']).toBe('1')
+        expect(attrs['aria-valuemax']).toBe('3')
+        expect(attrs['aria-valuenow']).toBe('2')
+        expect(attrs['aria-valuetext']).toContain('Version 2 of 3')
     })
 
     test('Home and End jump to the newest and oldest versions', () => {
@@ -201,5 +202,65 @@ describe('TimelineBarComponent', () => {
 
         expect(rec.classes.filter((c) => c.startsWith('tm-rail-segment'))).toHaveLength(300)
         expect(rec.classes.filter((c) => c.includes('is-selected'))).toHaveLength(1)
+    })
+
+    test('always carries a value, even with nothing selected', () => {
+        const { bar, rec } = createBar()
+        bar.render(three, null)
+        expect(rec.attrsByClass.get('tm-rail')?.['aria-valuenow']).toBe('1')
+    })
+
+    test('PageUp and PageDown move by more than one version', () => {
+        const { bar, rec, onSelect } = createBar()
+        const many = Array.from({ length: 40 }, (_, i) => snap(`s-${String(i)}`, now - i * MINUTE))
+        bar.render(many, 's-0')
+
+        rec.keysByClass.get('tm-rail')?.({ key: 'PageDown', preventDefault: () => {} })
+
+        expect(onSelect).toHaveBeenCalledWith('s-10')
+    })
+
+    test('clicking a bucket label jumps to that bucket', () => {
+        const { bar, rec, onSelect } = createBar()
+        bar.render([snap('recent', now - MINUTE), snap('old', now - 400 * 86_400_000)], 'recent')
+
+        const labelClicks = rec.clickList.filter((c) => c.cls.startsWith('tm-rail-group-label'))
+        // The second group is the older one.
+        labelClicks[1]?.fn()
+
+        expect(onSelect).toHaveBeenCalledWith('old')
+    })
+
+    test('a version can be identified from its tooltip without selecting it', () => {
+        const { bar, rec } = createBar()
+        bar.render([snap('a', now - MINUTE, 'git'), snap('b', now - 2 * MINUTE)], 'b')
+
+        // One tooltip source only: Obsidian renders aria-label, and adding a
+        // native `title` too would stack two tooltips on the same element.
+        const tooltips = [...rec.attrsByClass.entries()]
+            .filter(([cls]) => cls.startsWith('tm-rail-segment'))
+            .map(([, attrs]) => attrs['aria-label'] ?? '')
+        expect(
+            [...rec.attrsByClass.entries()]
+                .filter(([cls]) => cls.startsWith('tm-rail-segment'))
+                .every(([, attrs]) => attrs['title'] === undefined)
+        ).toBe(true)
+
+        // Position, and the source named rather than left to colour alone.
+        expect(tooltips.some((t) => t.includes('Version 1 of 2'))).toBe(true)
+        expect(tooltips.some((t) => t.includes('Git commit'))).toBe(true)
+        expect(tooltips.some((t) => t.includes('File recovery'))).toBe(true)
+    })
+
+    test('the rail itself describes the history rather than saying nothing useful', () => {
+        // Obsidian turns aria-label into a tooltip, so hovering between
+        // segments used to pop a bare "Version history".
+        const { bar, rec } = createBar()
+        bar.render(three, 'b')
+
+        const label = rec.attrsByClass.get('tm-rail')?.['aria-label'] ?? ''
+        expect(label).toContain('3 versions')
+        expect(label).toContain('newest')
+        expect(label).toContain('oldest')
     })
 })

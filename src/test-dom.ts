@@ -17,6 +17,12 @@ export interface Recording {
     texts: string[]
     /** Click handlers, keyed by the owning element's class string. */
     clicksByClass: Map<string, (event?: unknown) => void>
+    /**
+     * Every click handler in creation order. `clicksByClass` keeps only the
+     * last handler per class, which loses all but one of a repeated element
+     * such as a bucket label.
+     */
+    clickList: { cls: string; fn: (event?: unknown) => void }[]
     /** Keydown handlers, keyed by the owning element's class string. */
     keysByClass: Map<string, (event: unknown) => void>
     /** Inline styles set via `style.setProperty`, keyed by class string. */
@@ -25,7 +31,7 @@ export interface Recording {
     attrsByClass: Map<string, Record<string, string>>
     /** Class strings of elements that had `focus()` called on them. */
     focused: string[]
-    /** Callbacks handed to `requestAnimationFrame`, uninvoked. */
+    /** Callbacks deferred via `requestAnimationFrame`/`setTimeout`, uninvoked. */
     animationFrames: (() => void)[]
     /** The created elements themselves, keyed by class string. */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +43,7 @@ export function createRecording(): Recording {
         classes: [],
         texts: [],
         clicksByClass: new Map(),
+        clickList: [],
         keysByClass: new Map(),
         stylesByClass: new Map(),
         attrsByClass: new Map(),
@@ -78,6 +85,10 @@ export function createRecordingEl(rec: Recording, ownCls = '', clientWidth = 600
             requestAnimationFrame: (cb: () => void) => {
                 rec.animationFrames.push(cb)
                 return 0
+            },
+            setTimeout: (cb: () => void) => {
+                rec.animationFrames.push(cb)
+                return 0
             }
         },
         getBoundingClientRect: () => ({
@@ -109,7 +120,10 @@ export function createRecordingEl(rec: Recording, ownCls = '', clientWidth = 600
         },
         prepend: () => {},
         addEventListener: (type: string, fn: (event: unknown) => void) => {
-            if (type === 'click') rec.clicksByClass.set(ownCls, fn)
+            if (type === 'click') {
+                rec.clicksByClass.set(ownCls, fn)
+                rec.clickList.push({ cls: ownCls, fn })
+            }
             if (type === 'keydown') rec.keysByClass.set(ownCls, fn)
         },
         style: {

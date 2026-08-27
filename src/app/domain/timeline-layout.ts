@@ -20,7 +20,7 @@ import type { Snapshot, SnapshotSource } from '../types/snapshot.intf'
 /** Rendering density, chosen from the available width. */
 export type RailTier = 'full' | 'compact' | 'minimal'
 
-export type BucketKey = 'today' | 'yesterday' | 'week' | 'month' | 'older'
+export type BucketKey = 'today' | 'yesterday' | 'week' | 'month' | 'year'
 
 export interface RailSegment {
     id: string
@@ -32,6 +32,8 @@ export interface RailSegment {
 
 export interface RailGroup {
     key: BucketKey
+    /** Stable identity; year buckets differ per calendar year. */
+    id: string
     label: string
     /** Shorter label for narrow containers. */
     shortLabel: string
@@ -63,12 +65,20 @@ export function resolveTier(width: number): RailTier {
  * both truncate to "EARLIER TH…" in a group only a few segments wide, which
  * tells the reader nothing and makes two groups look identical.
  */
-const BUCKET_LABELS: Record<BucketKey, { label: string; shortLabel: string }> = {
+/**
+ * Labels are rolling windows, and say so. "This week" was a false claim: a
+ * version from six days ago can easily belong to the previous calendar week,
+ * and one from three weeks ago to the previous month.
+ *
+ * Anything past a month is labelled by year rather than lumped into "Older",
+ * which otherwise swallowed everything from one month to ten years old into a
+ * single undifferentiated group.
+ */
+const BUCKET_LABELS: Record<Exclude<BucketKey, 'year'>, { label: string; shortLabel: string }> = {
     today: { label: 'Today', shortLabel: 'Today' },
     yesterday: { label: 'Yesterday', shortLabel: 'Yest.' },
-    week: { label: 'This week', shortLabel: 'Week' },
-    month: { label: 'This month', shortLabel: 'Month' },
-    older: { label: 'Older', shortLabel: 'Older' }
+    week: { label: 'Last 7 days', shortLabel: '7 days' },
+    month: { label: 'Last 30 days', shortLabel: '30 days' }
 }
 
 /** Which time bucket a timestamp falls into, relative to `now`. */
@@ -78,8 +88,28 @@ export function bucketFor(ts: number, now: number): BucketKey {
 
     const days = differenceInCalendarDays(now, ts)
     if (days <= 7) return 'week'
-    if (days <= 31) return 'month'
-    return 'older'
+    if (days <= 30) return 'month'
+    return 'year'
+}
+
+/**
+ * Identity of the group a snapshot belongs to. Year buckets are split per
+ * calendar year, so a long history reads as 2026 / 2025 / 2024 rather than one
+ * enormous "Older".
+ */
+function groupIdFor(ts: number, now: number): { key: BucketKey; id: string } {
+    const key = bucketFor(ts, now)
+    return key === 'year'
+        ? { key, id: `year-${String(new Date(ts).getFullYear())}` }
+        : { key, id: key }
+}
+
+function labelsFor(key: BucketKey, ts: number): { label: string; shortLabel: string } {
+    if (key === 'year') {
+        const year = String(new Date(ts).getFullYear())
+        return { label: year, shortLabel: year }
+    }
+    return BUCKET_LABELS[key]
 }
 
 /**
@@ -94,7 +124,7 @@ export function computeVersionRail(snapshots: Snapshot[], width: number, now: nu
     const groups: RailGroup[] = []
 
     snapshots.forEach((snapshot, index) => {
-        const key = bucketFor(snapshot.ts, now)
+        const { key, id } = groupIdFor(snapshot.ts, now)
         const segment: RailSegment = {
             id: snapshot.id,
             ts: snapshot.ts,
@@ -105,12 +135,12 @@ export function computeVersionRail(snapshots: Snapshot[], width: number, now: nu
         const last = groups[groups.length - 1]
         // Snapshots are ordered, so a bucket is always contiguous; only the
         // most recent group can be extended.
-        if (last && last.key === key) {
+        if (last && last.id === id) {
             last.segments.push(segment)
             return
         }
 
-        groups.push({ key, ...BUCKET_LABELS[key], segments: [segment] })
+        groups.push({ key, id, ...labelsFor(key, snapshot.ts), segments: [segment] })
     })
 
     return { tier, groups, total: snapshots.length }
@@ -145,6 +175,23 @@ export function stepSelection(
     const next = index + direction
     if (next < 0 || next >= snapshots.length) return id
     return snapshots[next]?.id ?? id
+}
+
+/**
+ * Steps by a page. With hundreds of versions, one-at-a-time arrows mean
+ * hundreds of keypresses to reach the middle.
+ */
+export function pageSelection(
+    snapshots: Snapshot[],
+    id: string | null,
+    direction: -1 | 1,
+    pageSize = 10
+): string | null {
+    if (snapshots.length === 0) return null
+    const current = id === null ? 0 : snapshots.findIndex((snapshot) => snapshot.id === id)
+    const from = current === -1 ? 0 : current
+    const target = Math.min(snapshots.length - 1, Math.max(0, from + direction * pageSize))
+    return snapshots[target]?.id ?? id
 }
 
 /** First (newest) or last (oldest) version, for Home/End. */

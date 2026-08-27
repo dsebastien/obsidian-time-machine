@@ -42,9 +42,23 @@ Users select snapshots via a timeline slider. Two comparison modes decide which 
 
 Diffs are line-based (unified hunks, 3 lines of context) so per-hunk restore stays line-addressable, but each modified line additionally shows **word-level** inline highlighting (via `diffWordsWithSpace`): only the changed words are tinted, not the whole line. Line endings are normalized (CRLF→LF) before diffing so a line-ending mismatch between a snapshot and the current file does not report every line as changed. The diff library's `\ No newline at end of file` marker is stripped from rendered output.
 
-## Timeline Slider
+## Version Rail
 
-The slider maps left=newest, right=oldest. It auto-selects the newest snapshot on render and fires diff computation on each change. The slider is hidden when only one snapshot exists (just the date info and diff are shown).
+The rail maps left=newest, right=oldest, and is hidden when only one version exists (the version details and diff still show).
+
+**Every version gets its own segment — none are merged.** An earlier design positioned segments proportionally to their timestamp and merged ones that fell within a few pixels of each other. Real history is exponentially distributed, so that collapsed a burst of recent saves into a single unclickable tick while leaving most of the track empty. Segments are therefore equal, fixed-width marks; temporal context comes from grouping them under time buckets instead of from position.
+
+All segments on a rail share **one width**, computed per render from the available space and clamped between 14px and 40px. Each bucket is its own flex context, so letting segments flex made a bucket holding one version draw a fatter mark than a bucket holding twenty, and a two-version history drew two enormous slabs.
+
+The rail **scrolls** when segments no longer fit, and reveals the selected version when it falls outside the visible range. Sizing and revealing are measured synchronously and retried on a timer — never `requestAnimationFrame`, which does not run while the window is not painting, so a view rendered in a background tab would never be sized at all.
+
+The track has a **fixed height**. Segments grow on hover and when selected; a track sized to its content would resize its group and shift the bucket label above it on every hover.
+
+Buckets are rolling windows named honestly — Today, Yesterday, Last 7 days, Last 30 days — then one group per calendar year. "This week" was false for a version six days old in the previous calendar week, and a single "Older" bucket swallowed everything from one month to ten years.
+
+Position is counted **from the left**, matching the rail: the newest version is "1 of 10". The `role="slider"` value follows the same visual order, so ArrowRight increases it and Home/End map to the newest and oldest.
+
+Source is encoded by colour **and** shape: git segments carry a cap along their top edge. Colour alone fails in greyscale, for colour-blind users, and in forced-colours modes. Opacity is never used as an encoding.
 
 ## Snapshot Filtering
 

@@ -55,7 +55,7 @@ describe('bucketFor', () => {
         expect(bucketFor(NOW - DAY, NOW)).toBe('yesterday')
         expect(bucketFor(NOW - 4 * DAY, NOW)).toBe('week')
         expect(bucketFor(NOW - 20 * DAY, NOW)).toBe('month')
-        expect(bucketFor(NOW - 200 * DAY, NOW)).toBe('older')
+        expect(bucketFor(NOW - 200 * DAY, NOW)).toBe('year')
     })
 })
 
@@ -103,7 +103,7 @@ describe('computeVersionRail', () => {
         ]
         const rail = computeVersionRail(snapshots, 600, NOW)
 
-        expect(rail.groups.map((g) => g.key)).toEqual(['today', 'week', 'older'])
+        expect(rail.groups.map((g) => g.key)).toEqual(['today', 'week', 'year'])
         expect(rail.groups[0]?.segments.map((s) => s.id)).toEqual(['a', 'b'])
     })
 

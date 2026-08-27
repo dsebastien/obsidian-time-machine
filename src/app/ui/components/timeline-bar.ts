@@ -4,11 +4,19 @@ import {
     computeVersionRail,
     edgeSelection,
     findSegment,
+    pageSelection,
     stepSelection,
     type RailGroup,
     type VersionRail
 } from '../../domain/timeline-layout'
 import { formatBackupDate, formatRelativeTime } from '../../domain/backup'
+import type { GitMetadata } from '../../types/snapshot.intf'
+
+/** Kept in step with the gap and min/max width in `styles.src.css`. */
+const SEGMENT_GAP_PX = 2
+const GROUP_GAP_PX = 12
+const SEGMENT_MIN_PX = 14
+const SEGMENT_MAX_PX = 40
 
 export interface TimelineBarCallbacks {
     /** Fired only for user-driven selection changes, never on render. */
@@ -101,12 +109,48 @@ export class TimelineBarComponent {
         // Keep the keyboard on the rail across the re-render each selection triggers.
         if (this.railHadFocus) rail_.focus()
 
-        // Deferred a frame: the rail's own width is not settled at the moment
-        // its children are created, so measuring here reports no overflow and
-        // the reveal silently does nothing.
-        this.container.win.requestAnimationFrame(() => {
+        // Measure immediately — reading `clientWidth` forces layout, so this is
+        // accurate as soon as the element is in the document.
+        this.applySegmentWidth(rail_, rail)
+        this.revealSelected()
+
+        // ...and once more on a timer, for the case where the rail is not laid
+        // out yet (a view rendered while its leaf is hidden reports zero width).
+        // Deliberately a timeout rather than requestAnimationFrame: rAF does not
+        // run while the window is not painting, so a render in a background tab
+        // or an unfocused window would never get sized at all.
+        this.container.win.setTimeout(() => {
+            if (this.railEl !== rail_) return
+            this.applySegmentWidth(rail_, rail)
             this.revealSelected()
-        })
+        }, 0)
+    }
+
+    /**
+     * Gives every segment on the rail one shared width.
+     *
+     * Segments cannot simply flex: each bucket is its own flex context, so a
+     * bucket holding one version would draw a fatter segment than a bucket
+     * holding twenty. Computing a single width here keeps them uniform, and
+     * lets a short history spread out — two versions as two lost 14px specks in
+     * a wide pane looks broken — while a long one shrinks to the minimum and
+     * scrolls.
+     */
+    private applySegmentWidth(railEl: HTMLElement, rail: VersionRail): void {
+        const total = rail.total
+        if (total === 0) return
+
+        const available = railEl.clientWidth
+        if (available <= 0) return
+
+        const intraGroupGaps = (total - rail.groups.length) * SEGMENT_GAP_PX
+        const interGroupGaps = Math.max(0, rail.groups.length - 1) * GROUP_GAP_PX
+        const usable = available - intraGroupGaps - interGroupGaps
+
+        const ideal = Math.floor(usable / total)
+        const width = Math.max(SEGMENT_MIN_PX, Math.min(SEGMENT_MAX_PX, ideal))
+
+        railEl.style.setProperty('--tm-segment-width', `${String(width)}px`)
     }
 
     /**
@@ -149,40 +193,56 @@ export class TimelineBarComponent {
 
     private applyRailAria(rail: HTMLElement): void {
         const index = this.snapshots.findIndex((snapshot) => snapshot.id === this.selectedId)
-        const last = this.snapshots.length - 1
+        const total = this.snapshots.length
 
         rail.setAttribute('role', 'slider')
-        rail.setAttribute('aria-label', 'Version history')
-        rail.setAttribute('aria-valuemin', '0')
-        rail.setAttribute('aria-valuemax', String(last))
+        // Obsidian renders `aria-label` as a tooltip, so hovering the rail
+        // between segments used to pop a bare "Version history". Summarise the
+        // history instead, so every hover says something worth reading.
+        rail.setAttribute('aria-label', this.describeHistory())
+        // The value follows *visual* position: 1 is the leftmost (newest)
+        // segment. Numbering by age instead ran backwards against the rail, and
+        // inverted the slider contract — ArrowRight moved right but decreased
+        // the value, and Home/End were swapped.
+        rail.setAttribute('aria-valuemin', '1')
+        rail.setAttribute('aria-valuemax', String(Math.max(total, 1)))
 
-        if (index === -1) return
-        const selected = this.snapshots[index]
-        // Expressed oldest-to-newest so "increasing" reads as moving forward in time.
-        rail.setAttribute('aria-valuenow', String(last - index))
-        if (selected) {
-            rail.setAttribute(
-                'aria-valuetext',
-                `Version ${String(last - index + 1)} of ${String(this.snapshots.length)}, ${formatRelativeTime(selected.ts)}`
-            )
+        const selected = index === -1 ? null : this.snapshots[index]
+        if (!selected) {
+            // A slider must always carry a value, even with nothing selected.
+            rail.setAttribute('aria-valuenow', '1')
+            return
         }
+
+        rail.setAttribute('aria-valuenow', String(index + 1))
+        rail.setAttribute(
+            'aria-valuetext',
+            `Version ${String(index + 1)} of ${String(total)}, ${formatRelativeTime(selected.ts)}, ${describeSource(selected.source)}`
+        )
     }
 
     private renderGroup(parent: HTMLElement, group: RailGroup, tier: VersionRail['tier']): void {
+        // Sized by its contents. Growing groups proportionally was left over
+        // from the days of flexible segments; with fixed-width segments it only
+        // stretched each group into a wide empty box with its versions huddled
+        // at the left edge.
         const groupEl = parent.createDiv({ cls: 'tm-rail-group' })
-        // The group grows in proportion to how many versions it holds, so a busy
-        // day is visibly busier without any one version becoming unclickable.
-        groupEl.style.setProperty('flex-grow', String(group.segments.length))
 
         if (tier !== 'minimal') {
             // Always the short form. A group holding one version is only ~40px
             // wide, so "This week" and "This month" both truncated to
             // "THIS…" — two different groups rendering identically. The full
             // label stays available as a tooltip.
-            groupEl.createDiv({
+            const labelEl = groupEl.createEl('button', {
                 cls: 'tm-rail-group-label',
                 text: group.shortLabel,
-                attr: { title: group.label }
+                attr: { 'title': `Jump to ${group.label}`, 'aria-label': `Jump to ${group.label}` }
+            })
+            // Jumping by bucket is the only quick way to cross a long history
+            // without hundreds of arrow presses.
+            labelEl.addEventListener('click', () => {
+                const first = group.segments[0]
+                if (first) this.callbacks.onSelect(first.id)
             })
         }
 
@@ -193,13 +253,14 @@ export class TimelineBarComponent {
             const classes = ['tm-rail-segment', `is-${segment.source}`]
             if (isSelected) classes.push('is-selected')
 
-            const label = `${formatBackupDate(segment.ts)} — ${formatRelativeTime(segment.ts)}${
-                segment.source === 'git' ? ' (git commit)' : ''
-            }`
+            const snapshot = this.snapshots[segment.index]
+            const label = this.describeVersion(segment.index, snapshot?.ts ?? segment.ts, snapshot)
 
+            // `aria-label` only — Obsidian renders it as a tooltip, and adding
+            // `title` as well pops a second, native one on top of it.
             const segmentEl = segmentsEl.createDiv({
                 cls: classes.join(' '),
-                attr: { 'aria-label': label, 'title': label }
+                attr: { 'aria-label': label }
             })
             if (isSelected) this.selectedEl = segmentEl
 
@@ -209,6 +270,44 @@ export class TimelineBarComponent {
         }
     }
 
+    /** Whole-history summary, used as the rail's own tooltip. */
+    private describeHistory(): string {
+        const total = this.snapshots.length
+        const newest = this.snapshots[0]
+        const oldest = this.snapshots[total - 1]
+        if (!newest || !oldest) return 'Version history'
+
+        const versions = `${String(total)} version${total === 1 ? '' : 's'}`
+        if (total === 1) return `${versions} · ${formatRelativeTime(newest.ts)}`
+        return `${versions} · newest ${formatRelativeTime(newest.ts)} · oldest ${formatRelativeTime(oldest.ts)}`
+    }
+
+    /**
+     * Everything needed to recognise a version without selecting it: position,
+     * exact time to the second (several saves can land inside one minute), the
+     * source by name, and the commit subject for git versions.
+     */
+    private describeVersion(index: number, ts: number, snapshot: Snapshot | undefined): string {
+        const parts = [
+            `Version ${String(index + 1)} of ${String(this.snapshots.length)}`,
+            new Date(ts).toLocaleString(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'medium'
+            }),
+            formatRelativeTime(ts)
+        ]
+
+        if (snapshot?.source === 'git') {
+            const meta = snapshot.metadata as GitMetadata
+            parts.push(`Git commit ${meta.shortHash} — ${meta.commitMessage}`)
+        } else {
+            parts.push('File recovery snapshot')
+        }
+
+        // Joined on one line: Obsidian's tooltip does not honour newlines.
+        return parts.join(' · ')
+    }
+
     private renderDetails(selected: Snapshot | null, rail: VersionRail): void {
         if (!selected) return
 
@@ -216,9 +315,11 @@ export class TimelineBarComponent {
 
         const position = this.snapshots.findIndex((snapshot) => snapshot.id === selected.id)
         if (position !== -1 && rail.total > 1) {
+            // Counted from the left, like the rail. Counting by age made the
+            // leftmost segment read "10 of 10".
             details.createSpan({
                 cls: 'tm-rail-position',
-                text: `${String(rail.total - position)} of ${String(rail.total)}`
+                text: `${String(position + 1)} of ${String(rail.total)}`
             })
         }
 
@@ -234,9 +335,7 @@ export class TimelineBarComponent {
         const source = details.createSpan({ cls: 'tm-rail-source' })
         const icon = source.createSpan({ cls: 'tm-rail-source-icon' })
         setIcon(icon, selected.source === 'git' ? 'git-branch' : 'clock')
-        source.createSpan({
-            text: selected.source === 'git' ? 'Git commit' : 'File recovery'
-        })
+        source.createSpan({ text: describeSource(selected.source) })
     }
 
     /** @returns whether the key was consumed. */
@@ -245,6 +344,8 @@ export class TimelineBarComponent {
         if (key === 'ArrowRight') return this.step(1)
         if (key === 'Home') return this.jump('newest')
         if (key === 'End') return this.jump('oldest')
+        if (key === 'PageUp') return this.page(-1)
+        if (key === 'PageDown') return this.page(1)
         return false
     }
 
@@ -255,6 +356,14 @@ export class TimelineBarComponent {
             return true
         }
         // Consumed even at the edge, so the pane does not scroll instead.
+        return true
+    }
+
+    private page(direction: -1 | 1): boolean {
+        const target = pageSelection(this.snapshots, this.selectedId, direction)
+        if (target !== null && target !== this.selectedId) {
+            this.callbacks.onSelect(target)
+        }
         return true
     }
 
@@ -271,6 +380,10 @@ export class TimelineBarComponent {
         if (this.snapshots.length === 0) return
         this.render(this.snapshots, this.selectedId)
     }
+}
+
+function describeSource(source: Snapshot['source']): string {
+    return source === 'git' ? 'Git commit' : 'File recovery'
 }
 
 export { findSegment }
