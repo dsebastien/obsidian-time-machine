@@ -16,9 +16,52 @@ export class TimeMachineSettingTab extends PluginSettingTab {
         const { containerEl } = this
         containerEl.empty()
 
+        this.renderPastViewSettings(containerEl)
         this.renderGitSettings(containerEl)
         this.renderFollowButton(containerEl)
         this.renderSupportHeader(containerEl)
+    }
+
+    renderPastViewSettings(containerEl: HTMLElement): void {
+        new Setting(containerEl).setName('Past view').setHeading()
+
+        new Setting(containerEl)
+            .setName('Enable past view')
+            .setDesc(
+                'Read-only view of a note as it was at a chosen version, opened beside the editor. Hides its command, ribbon icon and menu items when off.'
+            )
+            .addToggle((toggle) => {
+                toggle.setValue(this.plugin.settings.pastViewEnabled).onChange(async (value) => {
+                    this.plugin.settings.pastViewEnabled = value
+                    await this.plugin.saveSettings()
+                })
+            })
+
+        new Setting(containerEl)
+            .setName('Open showing changes')
+            .setDesc('Show the diff rather than the old version when the past view opens')
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.pastViewDefaultShowDiff)
+                    .onChange(async (value) => {
+                        this.plugin.settings.pastViewDefaultShowDiff = value
+                        await this.plugin.saveSettings()
+                    })
+            })
+
+        new Setting(containerEl)
+            .setName('Run code in old versions')
+            .setDesc(
+                'Off by default. Rendering an old version normally executes any dataviewjs and Dataview blocks it contains — against your vault as it is today, including blocks you have since deleted. While off, those blocks are shown as plain source instead.'
+            )
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.pastViewExecuteBlocks)
+                    .onChange(async (value) => {
+                        this.plugin.settings.pastViewExecuteBlocks = value
+                        await this.plugin.saveSettings()
+                    })
+            })
     }
 
     renderGitSettings(containerEl: HTMLElement): void {

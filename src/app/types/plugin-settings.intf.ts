@@ -14,10 +14,25 @@ export interface PluginSettings {
     gitMaxCommits: number
     /** Last chosen diff comparison mode (persisted from the in-panel toggle) */
     diffComparisonMode: DiffComparisonMode
+    /** Whether the past view and its entry points are available */
+    pastViewEnabled: boolean
+    /** Whether the past view opens showing the diff rather than the version */
+    pastViewDefaultShowDiff: boolean
+    /**
+     * Whether executable blocks (dataviewjs, dataview, ...) in a historical
+     * version are allowed to run when it is rendered.
+     *
+     * Off by default: rendering a past version would otherwise execute code the
+     * user may have deleted from the note since, against today's vault.
+     */
+    pastViewExecuteBlocks: boolean
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
     gitIntegrationEnabled: true,
     gitMaxCommits: 50,
-    diffComparisonMode: 'current'
+    diffComparisonMode: 'current',
+    pastViewEnabled: true,
+    pastViewDefaultShowDiff: false,
+    pastViewExecuteBlocks: false
 }

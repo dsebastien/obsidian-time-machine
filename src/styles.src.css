@@ -505,3 +505,176 @@
 .time-machine-whats-new-body .time-machine-whats-new-links .setting-item-description {
     @apply pr-3;
 }
+
+/* --- Timeline bar ------------------------------------------------------- */
+
+.tm-timeline {
+    @apply flex flex-col gap-1 py-2;
+}
+
+.tm-timeline-row {
+    @apply flex items-center gap-1;
+}
+
+.tm-timeline-nav {
+    @apply shrink-0;
+}
+
+.tm-timeline-track {
+    @apply relative flex-1 h-6 cursor-pointer;
+}
+
+.tm-timeline-track:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-s);
+}
+
+.tm-timeline-line {
+    @apply absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2;
+    background-color: var(--background-modifier-border);
+    border-radius: 1px;
+}
+
+.tm-timeline-tick {
+    @apply absolute top-1/2 flex items-center justify-center -translate-x-1/2 -translate-y-1/2;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+    transition: transform 80ms ease-out;
+}
+
+.tm-timeline-tick:hover {
+    transform: translate(-50%, -50%) scale(1.25);
+    border-color: var(--interactive-accent);
+}
+
+.tm-timeline-tick.is-cluster {
+    border-style: double;
+    border-width: 3px;
+}
+
+.tm-timeline-tick.is-selected {
+    background-color: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    transform: translate(-50%, -50%) scale(1.3);
+}
+
+.tm-timeline-tick-icon {
+    @apply flex items-center justify-center;
+}
+
+.tm-timeline-tick-icon svg {
+    width: 8px;
+    height: 8px;
+}
+
+.tm-timeline-labels {
+    @apply flex justify-between;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+}
+
+.tm-timeline-info {
+    @apply flex flex-wrap items-center gap-2;
+    font-size: var(--font-ui-smaller);
+}
+
+.tm-timeline-selected {
+    color: var(--text-normal);
+    font-weight: var(--font-medium);
+}
+
+.tm-timeline-relative,
+.tm-timeline-source {
+    color: var(--text-muted);
+}
+
+.tm-timeline-source {
+    @apply flex items-center gap-1;
+}
+
+.tm-timeline-source-icon svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* --- Past view ---------------------------------------------------------- */
+
+.tm-past-root {
+    @apply flex flex-col h-full overflow-hidden;
+}
+
+.tm-past-header {
+    @apply flex flex-col gap-1 px-4 pt-3 pb-2 shrink-0;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-past-title-row {
+    @apply flex items-center gap-2;
+}
+
+.tm-past-title-row .tm-header-file {
+    @apply flex-1 truncate;
+}
+
+.tm-past-bind.is-active {
+    color: var(--interactive-accent);
+}
+
+.tm-past-commit {
+    @apply flex flex-wrap items-baseline gap-2;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+.tm-past-commit-hash {
+    font-family: var(--font-monospace);
+    color: var(--text-accent);
+}
+
+.tm-past-commit-message {
+    @apply truncate;
+    color: var(--text-normal);
+}
+
+.tm-past-controls {
+    @apply flex flex-wrap items-center justify-between gap-2;
+}
+
+.tm-past-diff-toggle {
+    @apply cursor-pointer;
+    font-size: var(--font-ui-smaller);
+}
+
+.tm-past-diff-toggle.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.tm-past-body {
+    @apply flex-1 overflow-y-auto px-4 py-3;
+}
+
+.tm-past-neutralised {
+    @apply flex items-center gap-2 mb-3 px-3 py-2;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    border-left: 3px solid var(--text-warning);
+}
+
+.tm-past-neutralised-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tm-past-rendered {
+    @apply select-text;
+    padding: 0;
+}

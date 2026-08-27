@@ -1,16 +1,32 @@
 import { registerWhatsNewView } from './whats-new'
-import { Notice, Plugin, debounce, type TFile, type WorkspaceLeaf } from 'obsidian'
+import {
+    Menu,
+    Notice,
+    Plugin,
+    TFile,
+    debounce,
+    type TAbstractFile,
+    type WorkspaceLeaf
+} from 'obsidian'
 import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
 import { TimeMachineSettingTab } from './settings/settings-tab'
 import { log } from '../utils/log'
-import { VIEW_TYPE } from './constants'
+import { PAST_VIEW_TYPE, VIEW_TYPE } from './constants'
 import { TimeMachineView } from './ui/time-machine-view'
 import { registerCommands } from './commands/register-commands'
 import { FileRecoveryService } from './services/file-recovery.service'
+import { SnapshotCache } from './services/snapshot-cache'
+import { PastView } from './ui/past-view'
+import { openPastView } from './services/past-view-launcher'
+import type { HistoryView } from './ui/history-view'
+import type { DiffComparisonMode } from './types/plugin-settings.intf'
 
 export class TimeMachinePlugin extends Plugin {
     settings: PluginSettings = { ...DEFAULT_SETTINGS }
+
+    /** Shared so several open views never fetch the same snapshots twice. */
+    readonly snapshotCache = new SnapshotCache()
 
     override async onload(): Promise<void> {
         // Must run before anything can call saveData (fresh-install detection)
@@ -25,11 +41,12 @@ export class TimeMachinePlugin extends Plugin {
         }
 
         this.registerView(VIEW_TYPE, (leaf: WorkspaceLeaf) => new TimeMachineView(leaf, this))
+        this.registerView(PAST_VIEW_TYPE, (leaf: WorkspaceLeaf) => new PastView(leaf, this))
         registerCommands(this)
 
         this.registerEvent(
             this.app.workspace.on('file-open', (file) => {
-                for (const view of this.getActiveViews()) {
+                for (const view of this.getFollowingViews()) {
                     void view.updateForFile(file)
                 }
             })
@@ -43,16 +60,17 @@ export class TimeMachinePlugin extends Plugin {
         this.registerDomEvent(activeDocument, 'selectionchange', debouncedCursorSync)
         this.registerEvent(
             this.app.workspace.on('active-leaf-change', (leaf) => {
-                // Focusing the Time Machine view itself (e.g. clicking its slider)
-                // must not switch the displayed file.
+                // Focusing one of the plugin's own views (e.g. clicking a
+                // timeline tick) must not switch the displayed file.
                 if (leaf?.view instanceof TimeMachineView) return
+                if (leaf?.view instanceof PastView) return
                 this.syncToCursorFile()
             })
         )
 
         const debouncedRefresh = debounce(
             () => {
-                for (const view of this.getActiveViews()) {
+                for (const view of this.getHistoryViews()) {
                     void view.refreshCurrentContent()
                 }
             },
@@ -62,7 +80,7 @@ export class TimeMachinePlugin extends Plugin {
 
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
-                for (const view of this.getActiveViews()) {
+                for (const view of this.getHistoryViews()) {
                     if (view.getCurrentFile()?.path === file.path) {
                         debouncedRefresh()
                         return
@@ -75,7 +93,7 @@ export class TimeMachinePlugin extends Plugin {
         log(`Snapshot poll interval: ${snapshotIntervalMs / 1000}s`, 'debug')
         this.registerInterval(
             window.setInterval(() => {
-                for (const view of this.getActiveViews()) {
+                for (const view of this.getHistoryViews()) {
                     const currentFile = view.getCurrentFile()
                     if (currentFile) {
                         void view.updateForFile(currentFile)
@@ -84,7 +102,53 @@ export class TimeMachinePlugin extends Plugin {
             }, snapshotIntervalMs)
         )
 
+        this.registerPastViewEntryPoints()
         this.addSettingTab(new TimeMachineSettingTab(this.app, this))
+    }
+
+    /**
+     * Ribbon icon and context-menu items for the past view. The command lives in
+     * `register-commands`; all four entry points share `openPastView`.
+     */
+    private registerPastViewEntryPoints(): void {
+        this.addRibbonIcon('history', 'Open past view for current note', () => {
+            if (!this.settings.pastViewEnabled) {
+                new Notice('Time Machine: The past view is disabled in settings')
+                return
+            }
+            const file = this.resolveActiveFile()
+            if (!file || file.extension !== 'md') {
+                new Notice('Time Machine: Open a markdown note first')
+                return
+            }
+            void openPastView(this, file)
+        })
+
+        const addMenuItem = (menu: Menu, file: TAbstractFile | null): void => {
+            if (!this.settings.pastViewEnabled) return
+            // `file-menu` hands over a TAbstractFile, which may be a folder.
+            if (!(file instanceof TFile) || file.extension !== 'md') return
+
+            menu.addItem((item) =>
+                item
+                    .setTitle('Open past view')
+                    .setIcon('history')
+                    .onClick(() => {
+                        void openPastView(this, file)
+                    })
+            )
+        }
+
+        this.registerEvent(
+            this.app.workspace.on('file-menu', (menu, file) => {
+                addMenuItem(menu, file)
+            })
+        )
+        this.registerEvent(
+            this.app.workspace.on('editor-menu', (menu, _editor, info) => {
+                addMenuItem(menu, info.file)
+            })
+        )
     }
 
     /**
@@ -121,7 +185,7 @@ export class TimeMachinePlugin extends Plugin {
         const file = this.app.workspace.activeEditor?.file ?? null
         if (!file) return
 
-        for (const view of this.getActiveViews()) {
+        for (const view of this.getFollowingViews()) {
             if (view.getCurrentFile()?.path !== file.path) {
                 void view.updateForFile(file)
             }
@@ -136,17 +200,43 @@ export class TimeMachinePlugin extends Plugin {
     private isFocusInsideOwnView(): boolean {
         const active = activeDocument.activeElement
         if (!active) return false
-        return this.getActiveViews().some((view) => view.containerEl?.contains(active))
+        return this.getHistoryViews().some((view) => view.containerEl.contains(active))
     }
 
-    private getActiveViews(): TimeMachineView[] {
-        return this.app.workspace
-            .getLeavesOfType(VIEW_TYPE)
-            .map((leaf) => leaf.view)
-            .filter(
-                (view): view is TimeMachineView =>
-                    view instanceof TimeMachineView && typeof view.getCurrentFile === 'function'
-            )
+    /** Every open history surface, sidebar and past view alike. */
+    getHistoryViews(): HistoryView[] {
+        const views: HistoryView[] = []
+        for (const type of [VIEW_TYPE, PAST_VIEW_TYPE]) {
+            for (const leaf of this.app.workspace.getLeavesOfType(type)) {
+                const view = leaf.view
+                if (view instanceof TimeMachineView || view instanceof PastView) {
+                    views.push(view)
+                }
+            }
+        }
+        return views
+    }
+
+    /**
+     * History views that should switch when the active file changes. A past view
+     * bound to its note deliberately does not — that is the whole point of it.
+     */
+    private getFollowingViews(): HistoryView[] {
+        return this.getHistoryViews().filter((view) => view.followsActiveFile())
+    }
+
+    /**
+     * Single entry point for comparison-mode changes. The setting is shared, so
+     * every open view has to be told; otherwise two views disagree about the
+     * mode they are both supposedly reading from settings.
+     */
+    async setComparisonMode(mode: DiffComparisonMode): Promise<void> {
+        if (this.settings.diffComparisonMode === mode) return
+        this.settings.diffComparisonMode = mode
+        await this.saveSettings()
+        for (const view of this.getHistoryViews()) {
+            view.onComparisonModeChanged()
+        }
     }
 
     override onunload(): void {
@@ -179,7 +269,19 @@ export class TimeMachinePlugin extends Plugin {
             return
         }
 
-        this.settings = { ...DEFAULT_SETTINGS, ...loadedSettings }
+        // Pick only known keys. A spread of the raw payload carries unknown
+        // keys from older versions (or other tools) into `settings`, and
+        // `saveSettings` then writes them straight back out, so the file
+        // accumulates junk that no code reads.
+        const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS }
+        const raw = loadedSettings as unknown as Record<string, unknown>
+        for (const key of Object.keys(DEFAULT_SETTINGS)) {
+            const value = raw[key]
+            if (value !== undefined && typeof value === typeof settings[key]) {
+                settings[key] = value
+            }
+        }
+        this.settings = settings as unknown as PluginSettings
         log('Settings loaded', 'debug', this.settings)
     }
 

@@ -1,0 +1,51 @@
+import type { App, TFile } from 'obsidian'
+import { Notice } from 'obsidian'
+import { format } from 'date-fns'
+import { log } from '../../utils/log'
+
+/**
+ * Writes a historical version out as a new note beside the original.
+ *
+ * This is the only place the plugin creates a file. Everything else is
+ * read-only or writes back to the note the user already had.
+ */
+export class NoteExportService {
+    /**
+     * `<basename> (yyyy-MM-dd HH-mm).md` next to the source note.
+     *
+     * Collisions are handled by catching the create error and retrying with a
+     * numeric suffix rather than checking existence first: `vault.create`
+     * rejects when the path exists, and a pre-check races against anything else
+     * writing to the vault.
+     */
+    static async createFromSnapshot(
+        app: App,
+        sourceFile: TFile,
+        content: string,
+        ts: number
+    ): Promise<TFile | null> {
+        const stamp = format(ts, 'yyyy-MM-dd HH-mm')
+        const folder = sourceFile.parent?.path ?? ''
+        // A file at the vault root has parent path '/', which must not become a
+        // leading double slash.
+        const prefix = folder === '' || folder === '/' ? '' : `${folder}/`
+        const base = `${prefix}${sourceFile.basename} (${stamp})`
+
+        for (let attempt = 0; attempt < 20; attempt++) {
+            const path = attempt === 0 ? `${base}.md` : `${base} ${String(attempt + 1)}.md`
+            try {
+                const created = await app.vault.create(path, content)
+                new Notice(`Time Machine: Created "${created.name}"`)
+                log('Created note from snapshot', 'info', created.path)
+                return created
+            } catch (error) {
+                // Almost certainly "file already exists" — try the next suffix.
+                // Any other failure surfaces once the attempts run out.
+                log('Could not create note, retrying', 'debug', { path, error })
+            }
+        }
+
+        new Notice('Time Machine: Could not create the note')
+        return null
+    }
+}

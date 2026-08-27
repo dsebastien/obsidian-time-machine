@@ -3,6 +3,7 @@ import type { App } from 'obsidian'
 import { SnapshotService } from './snapshot.service'
 import { FileRecoveryService } from './file-recovery.service'
 import { GitService } from './git.service'
+import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 import type { PluginSettings } from '../types/plugin-settings.intf'
 import type { FileRecoveryBackup } from '../types/backup.intf'
 
@@ -21,12 +22,7 @@ function createMockApp(): App {
 }
 
 function defaultSettings(overrides?: Partial<PluginSettings>): PluginSettings {
-    return {
-        gitIntegrationEnabled: true,
-        gitMaxCommits: 50,
-        diffComparisonMode: 'current',
-        ...overrides
-    }
+    return { ...DEFAULT_SETTINGS, ...overrides }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents

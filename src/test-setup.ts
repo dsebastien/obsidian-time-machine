@@ -16,6 +16,28 @@ void mock.module('obsidian', () => ({
     Component: class Component {
         load() {}
         unload() {}
+        addChild<T>(child: T): T {
+            return child
+        }
+        removeChild<T>(child: T): T {
+            return child
+        }
+        register(_cb: () => void) {}
+    },
+    Menu: class Menu {
+        addItem(cb: (item: unknown) => void) {
+            const item = {
+                setTitle: () => item,
+                setIcon: () => item,
+                setDisabled: () => item,
+                onClick: () => item
+            }
+            cb(item)
+            return this
+        }
+        showAtMouseEvent() {
+            return this
+        }
     },
     MarkdownRenderer: {
         render: () => Promise.resolve()
