@@ -1,5 +1,24 @@
 # Release Notes
 
+## 1.5.0 (2026-08-27)
+
+### Features
+
+- **plugin:** add the past view (issue [#9](https://github.com/dsebastien/obsidian-time-machine/issues/9))
+- **plugin:** neutralise executable blocks before rendering old versions
+- **plugin:** refine the version rail
+- **plugin:** replace the timeline with a version rail
+
+### Bug Fixes
+
+- **plugin:** address the adversarial review of the past view
+- **plugin:** close three neutralisation bypasses and split the async guards
+- **plugin:** discard stale async results and guard hunk restore
+- **plugin:** follow the active note and stop pinning the tab
+- **plugin:** keep every version reachable in a large history
+- **plugin:** separate the comparison mode options
+- **plugin:** truncate long filenames instead of overflowing the header
+
 ## 1.4.0 (2026-08-19)
 
 ### Features

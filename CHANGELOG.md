@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0](https://github.com/dsebastien/obsidian-time-machine/compare/1.4.0...1.5.0) (2026-08-27)
+
+### Features
+
+* **plugin:** add the past view (issue [#9](https://github.com/dsebastien/obsidian-time-machine/issues/9)) ([2fe2241](https://github.com/dsebastien/obsidian-time-machine/commit/2fe22418bddb35c9ce5b390de1a5d7d2aaa93c88))
+* **plugin:** neutralise executable blocks before rendering old versions ([905a277](https://github.com/dsebastien/obsidian-time-machine/commit/905a277e4249db7e7f3b155d5b287b25746b547b)), closes [#9](https://github.com/dsebastien/obsidian-time-machine/issues/9)
+* **plugin:** refine the version rail ([fb5cf3b](https://github.com/dsebastien/obsidian-time-machine/commit/fb5cf3b5817895a3d6500d346ed3c00141506229))
+* **plugin:** replace the timeline with a version rail ([57c32fd](https://github.com/dsebastien/obsidian-time-machine/commit/57c32fde28077a8d37996de77f435b25ba2c5878))
+
+### Bug Fixes
+
+* **plugin:** address the adversarial review of the past view ([76f4c3f](https://github.com/dsebastien/obsidian-time-machine/commit/76f4c3fab682b0e9585b413b325535bead0e6c12))
+* **plugin:** close three neutralisation bypasses and split the async guards ([775c5de](https://github.com/dsebastien/obsidian-time-machine/commit/775c5de2613cf27b106b33016a6e143c0b9ea440))
+* **plugin:** discard stale async results and guard hunk restore ([d55c353](https://github.com/dsebastien/obsidian-time-machine/commit/d55c35369f1100ac4709b53acf3d282ea9e9a8e3)), closes [#9](https://github.com/dsebastien/obsidian-time-machine/issues/9)
+* **plugin:** follow the active note and stop pinning the tab ([cd55ae4](https://github.com/dsebastien/obsidian-time-machine/commit/cd55ae47c3af752578c41c58e32155bcd1643459))
+* **plugin:** keep every version reachable in a large history ([28b55ce](https://github.com/dsebastien/obsidian-time-machine/commit/28b55ced2f0e1ac0dd3288a3b20d8f5e8d55b84c))
+* **plugin:** separate the comparison mode options ([771685a](https://github.com/dsebastien/obsidian-time-machine/commit/771685a420c1b492ef1530cc6feb24fa1a9f8599))
+* **plugin:** truncate long filenames instead of overflowing the header ([33316f6](https://github.com/dsebastien/obsidian-time-machine/commit/33316f6355c9b9dcb1959f9b636465af7ca57486))
+
 ## [1.4.0](https://github.com/dsebastien/obsidian-time-machine/compare/1.3.0...1.4.0) (2026-08-19)
 
 ### Features
@@ -132,6 +151,7 @@ All notable changes to this project will be documented in this file.
 * **all:** fied the release workflow to name the tags correctly ([95aa6ff](https://github.com/dsebastien/obsidian-time-machine/commit/95aa6ffd40e718d055e24e1f052ed374e171376b))
 * **all:** fix image url ([1a0086b](https://github.com/dsebastien/obsidian-time-machine/commit/1a0086b1982b8da1f6e3c3135f27dcd9bb2ff787))
 * **all:** use console.debug instead of console.log ([09306e4](https://github.com/dsebastien/obsidian-time-machine/commit/09306e492c81437dff10dfe8b3b5e5734be1382a))
+
 
 
 

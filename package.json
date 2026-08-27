@@ -1,6 +1,6 @@
 {
     "name": "time-machine",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "description": "Browse, compare, and restore previous versions of your notes using built-in file-recovery snapshots.",
     "author": {
         "name": "Sébastien Dubois",
