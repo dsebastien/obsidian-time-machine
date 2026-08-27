@@ -37,25 +37,21 @@ being reused for navigation. That is a **different concept** from "this view sho
 note". Use `boundToFile` in state and "Follow active note" for the UI toggle. Separately, do set
 Obsidian's `pinned: true` on the leaf so navigation does not hijack it.
 
-## Open decision — needs sign-off before Phase 2
+## Rendering security (decided)
 
-`MarkdownRenderer.render` runs every registered markdown post-processor. Rendering a historical
-version therefore executes any `dataviewjs` (arbitrary JS), Dataview queries (against the
-_current_ index), and whatever else the user has installed. There is no safe mode on the API,
-and sanitising the DOM afterwards is useless because execution already happened.
+`MarkdownRenderer.render` runs every registered markdown post-processor, so rendering a
+historical version executes any `dataviewjs` (arbitrary JS) and Dataview queries in it, against
+today's index — including blocks the user has since deleted. There is no safe mode on the API,
+and sanitising the resulting DOM is useless because execution already happened.
 
-This is not hypothetical: a historical version may contain a `dataviewjs` block the user has
-since deleted. Scrubbing the timeline would silently re-execute it.
+**Decision: neutralise before rendering.** `neutraliseExecutableBlocks()`
+(`domain/markdown-safety.ts`) relabels executable fenced blocks to `text` before the markdown
+reaches the renderer, so they display as source. `pastViewExecuteBlocks` (default `false`) opts
+back into full execution.
 
-**Proposed default (needs approval):** render via `MarkdownRenderer`, but first neutralise
-executable blocks — `dataviewjs`, `dataview`, `templater-js`, and `<script>` — by rewriting
-them to inert fenced code blocks before rendering, so they display as source. A setting
-(`pastViewExecuteBlocks`, default `false`) opts back into full execution.
-
-Alternatives, both worse: render everything (surprising and genuinely unsafe), or render plain
-source only (contradicts the locked "rendered markdown" decision).
-
-Phase 2 does not start until this is settled.
+Verified in a live vault: a ` ```dataviewjs ` block executed and rendered its output, while the
+same block relabelled to ` ```text ` did not run and rendered its source. The view surfaces a
+count of neutralised blocks so the behaviour is visible rather than silent.
 
 ## Phase 0 — Extraction (no user-visible change)
 
