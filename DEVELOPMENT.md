@@ -25,7 +25,9 @@ bun install
 
 ### Configure Vault Location
 
-Set the `OBSIDIAN_VAULT_LOCATION` environment variable to your vault path. The build script uses this to copy the plugin files directly to your vault for testing.
+Set the `OBSIDIAN_VAULT_LOCATION` environment variable to your vault path. `bun run dev` uses it to copy the plugin into `<vault>/.obsidian/plugins/time-machine/` after each build, and writes a `.hotreload` marker so the Hot Reload plugin picks the change up live.
+
+**`bun run build` does not copy anything.** The production build stops at `dist/` on purpose, so a release build never touches your vault. To test a production build in a vault, copy `dist/*` across yourself.
 
 #### Windows (PowerShell)
 
