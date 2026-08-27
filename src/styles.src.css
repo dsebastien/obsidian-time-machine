@@ -321,7 +321,7 @@
     }
 
     .tm-compare-mode-btn {
-        @apply px-2 py-0.5 text-xs cursor-pointer;
+        @apply px-3 py-0.5 text-xs cursor-pointer;
         background-color: var(--interactive-normal);
         color: var(--text-muted);
         border: none;
@@ -828,4 +828,20 @@
 .tm-header-open-past-icon svg {
     width: 13px;
     height: 13px;
+}
+
+/* Separator between "Current file" and "Next version".
+
+   Deliberately outside `@layer components`: Obsidian's own `button` styles are
+   unlayered, and unlayered rules beat layered ones no matter their specificity,
+   so a border declared inside the layer is simply dropped. Without it the two
+   options sit flush and read as one blob rather than two choices. */
+.tm-compare-mode-btn + .tm-compare-mode-btn {
+    border-left: 1px solid var(--background-modifier-border);
+}
+
+/* The divider would otherwise cut across the highlighted option. */
+.tm-compare-mode-btn.is-active,
+.tm-compare-mode-btn.is-active + .tm-compare-mode-btn {
+    border-left-color: var(--interactive-accent);
 }
