@@ -17,32 +17,83 @@ const MIN_WIDTH_TO_SPLIT = 700
  * behaviour rather than contract — under RTL or stacked tabs the placement may
  * differ.
  */
+export interface PastViewSelection {
+    snapshotId: string | null
+    /** Persisted with the id so the nearest-survivor fallback still works. */
+    snapshotTimestamp: number | null
+}
+
+/**
+ * Opens in flight, keyed by path.
+ *
+ * `setViewState` is async, so two quick launches could both pass the
+ * already-open check before either created its leaf, producing duplicates.
+ */
+const inFlight = new Map<string, Promise<void>>()
+
 export async function openPastView(
     plugin: TimeMachinePlugin,
     file: TFile,
-    snapshotId: string | null = null
+    selection: PastViewSelection = { snapshotId: null, snapshotTimestamp: null }
 ): Promise<void> {
-    const { app } = plugin
-
     if (file.extension !== 'md') {
         new Notice('Time Machine: Only markdown notes have a history view')
         return
     }
 
+    const pending = inFlight.get(file.path)
+    if (pending) {
+        await pending
+        return
+    }
+
+    const run = doOpenPastView(plugin, file, selection).finally(() => {
+        inFlight.delete(file.path)
+    })
+    inFlight.set(file.path, run)
+    await run
+}
+
+async function doOpenPastView(
+    plugin: TimeMachinePlugin,
+    file: TFile,
+    selection: PastViewSelection
+): Promise<void> {
+    const { app } = plugin
+
     const existing = findExistingPastView(plugin, file.path)
     if (existing) {
+        // Apply the incoming selection before revealing, so promoting from the
+        // sidebar lands on the version the user was already looking at.
+        if (selection.snapshotId !== null) {
+            const state = normalisePastViewState(existing.getViewState().state)
+            await existing.setViewState({
+                type: PAST_VIEW_TYPE,
+                active: true,
+                state: { ...state, ...selection }
+            })
+        }
         await app.workspace.revealLeaf(existing)
         return
     }
 
-    const targetLeaf = findEditorLeafForFile(plugin, file)
+    let targetLeaf = findEditorLeafForFile(plugin, file)
+
+    // Launched from the file explorer, where the note may not be open at all.
+    // Open it in a root editor first, so the split still yields the promised
+    // old-version-left / live-note-right arrangement.
+    if (!targetLeaf && canSplit(plugin)) {
+        const editorLeaf = app.workspace.getLeaf('tab')
+        await editorLeaf.openFile(file)
+        targetLeaf = editorLeaf
+    }
 
     let leaf: WorkspaceLeaf
     if (targetLeaf && canSplit(plugin)) {
         leaf = app.workspace.createLeafBySplit(targetLeaf, 'vertical', true)
     } else {
-        // Mobile, a narrow workspace, or no editor showing the file: a tab is
-        // the full-width past view and needs no extra handling.
+        // Mobile or a narrow workspace: a tab is the full-width past view and
+        // needs no extra handling.
         leaf = app.workspace.getLeaf('tab')
     }
 
@@ -52,8 +103,8 @@ export async function openPastView(
         state: {
             filePath: file.path,
             boundToFile: true,
-            snapshotId,
-            snapshotTimestamp: null,
+            snapshotId: selection.snapshotId,
+            snapshotTimestamp: selection.snapshotTimestamp,
             showDiff: plugin.settings.pastViewDefaultShowDiff
         }
     })

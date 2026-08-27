@@ -144,7 +144,7 @@ describe('SnapshotSession', () => {
 
         test('restores a persisted selection by id', async () => {
             const { session } = createSession('current')
-            session.restoreSelection('b', 2000)
+            session.restoreSelection('b', 2000, 'note.md')
             spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
                 snap('a', 3000, 'v3'),
                 snap('b', 2000, 'v2')
@@ -159,7 +159,7 @@ describe('SnapshotSession', () => {
             const { session } = createSession('current')
             // This snapshot no longer exists, but its timestamp still locates
             // the nearest survivor — which is why the timestamp is persisted.
-            session.restoreSelection('vanished', 2100)
+            session.restoreSelection('vanished', 2100, 'note.md')
             spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
                 snap('a', 9000, 'v3'),
                 snap('b', 2000, 'v2')
@@ -280,6 +280,136 @@ describe('SnapshotSession', () => {
 
             expect(await first).toBeNull()
             expect(second).not.toBeNull()
+        })
+    })
+
+    describe('cross-file safety', () => {
+        // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+        const other = { path: 'other.md', name: 'other.md' } as unknown as TFile
+
+        test("drops the previous note's snapshots before awaiting the new fetch", async () => {
+            const { session } = createSession('live')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+            await session.loadFor(file)
+            expect(session.selectedSnapshot).not.toBeNull()
+
+            // Switch note; the fetch has not resolved yet.
+            let release: (value: Snapshot[]) => void = () => {}
+            spy.mockReturnValue(
+                new Promise<Snapshot[]>((r) => {
+                    release = r
+                })
+            )
+            const pending = session.loadFor(other)
+
+            // This is the window in which a restore click used to combine the
+            // NEW file with the OLD file's snapshot and corrupt the wrong note.
+            expect(session.snapshots).toEqual([])
+            expect(session.selectedSnapshot).toBeNull()
+
+            release([])
+            await pending
+        })
+
+        test('never returns a snapshot belonging to another note', async () => {
+            const { session } = createSession('live')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([snap('a', 3000, 'v3')])
+            await session.loadFor(file)
+
+            // Force the mismatch a git id could produce: `git-<hash>` is not
+            // file-scoped, so one commit can appear for several notes.
+            session.snapshots = [
+                { ...snap('a', 3000, 'v3'), path: 'somewhere-else.md' } as Snapshot
+            ]
+
+            expect(session.selectedSnapshot).toBeNull()
+        })
+
+        test('does not carry a selection across to a different note', async () => {
+            const { session } = createSession('live')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+            await session.loadFor(file)
+            session.select('b')
+
+            spy.mockResolvedValue([
+                { ...snap('z', 9000, 'other-new'), path: 'other.md' } as Snapshot,
+                { ...snap('b', 2000, 'other-v2'), path: 'other.md' } as Snapshot
+            ])
+            await session.loadFor(other)
+
+            // 'b' exists in the other note's list too, but the selection must
+            // not follow it across — the newest is the right default.
+            expect(session.getSelectedId()).toBe('z')
+        })
+
+        test('honours a selection explicitly restored for that path', async () => {
+            const { session } = createSession('live')
+            session.restoreSelection('b', 2000, 'note.md')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+
+            await session.loadFor(file)
+
+            expect(session.getSelectedId()).toBe('b')
+        })
+
+        test('ignores a restored selection scoped to a different path', async () => {
+            const { session } = createSession('live')
+            session.restoreSelection('b', 2000, 'somewhere-else.md')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+
+            await session.loadFor(file)
+
+            expect(session.getSelectedId()).toBe('a')
+        })
+    })
+
+    describe('deleted or unreadable files', () => {
+        test('a read failure during load yields an empty history, not a rejection', async () => {
+            // Deleting a note while a view is open makes the next poll read a
+            // path that no longer exists.
+            const { session, read } = createSession('live')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([snap('a', 3000, 'v3')])
+            read.mockRejectedValue(new Error('ENOENT: no such file or directory'))
+
+            expect(await session.loadFor(file)).toBe('updated')
+            expect(session.snapshots).toEqual([])
+        })
+
+        test('a read failure during refresh leaves state untouched', async () => {
+            const { session, read } = createSession('live')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+            await session.loadFor(file)
+
+            read.mockRejectedValue(new Error('ENOENT'))
+            expect(await session.refreshContent()).toBe('unchanged')
+            expect(session.snapshots).toHaveLength(2)
+        })
+
+        test('a read failure during diff yields null', async () => {
+            const { session, read } = createSession('live')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+            await session.loadFor(file)
+
+            read.mockRejectedValue(new Error('ENOENT'))
+            expect(await session.computeDiff()).toBeNull()
         })
     })
 })

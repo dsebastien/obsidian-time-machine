@@ -686,3 +686,7 @@
 .tm-header-row .tm-header-file {
     @apply flex-1 truncate;
 }
+
+.tm-hidden {
+    display: none !important;
+}

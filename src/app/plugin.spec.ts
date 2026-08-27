@@ -83,7 +83,8 @@ function createPlugin(
     )
 
     p.registerView = mock(() => {})
-    p.addRibbonIcon = mock(() => ({}) as unknown as HTMLElement)
+    p.register = mock(() => {})
+    p.addRibbonIcon = mock(() => ({ toggleClass: () => {} }) as unknown as HTMLElement)
     p.addCommand = mock(() => {})
     p.addSettingTab = mock(() => {})
     p.loadData = mock(async () => null)

@@ -28,6 +28,27 @@ export class TimeMachinePlugin extends Plugin {
     /** Shared so several open views never fetch the same snapshots twice. */
     readonly snapshotCache = new SnapshotCache()
 
+    private pastViewRibbonEl: HTMLElement | null = null
+
+    /** Hides the ribbon icon outright when the past view is disabled. */
+    syncPastViewRibbon(): void {
+        if (!this.pastViewRibbonEl) return
+        this.pastViewRibbonEl.toggleClass('tm-hidden', !this.settings.pastViewEnabled)
+    }
+
+    /**
+     * Re-renders every open history view. Used when a setting changes what they
+     * display — notably `pastViewExecuteBlocks`, where leaving an already
+     * rendered version on screen would keep executing code the user just
+     * switched off.
+     */
+    refreshAllViews(): void {
+        for (const view of this.getHistoryViews()) {
+            const file = view.getCurrentFile()
+            if (file) void view.updateForFile(file)
+        }
+    }
+
     override async onload(): Promise<void> {
         // Must run before anything can call saveData (fresh-install detection)
         registerWhatsNewView(this)
@@ -57,6 +78,9 @@ export class TimeMachinePlugin extends Plugin {
         // between notes. Track caret movement and switch the view to the note the
         // cursor is actually in, resolved via `workspace.activeEditor.file`.
         const debouncedCursorSync = debounce(() => this.syncToCursorFile(), 150, true)
+        // Debouncers hold a pending timer that would otherwise fire after
+        // unload, touching a half-torn-down plugin.
+        this.register(() => debouncedCursorSync.cancel())
         this.registerDomEvent(activeDocument, 'selectionchange', debouncedCursorSync)
         this.registerEvent(
             this.app.workspace.on('active-leaf-change', (leaf) => {
@@ -77,6 +101,8 @@ export class TimeMachinePlugin extends Plugin {
             1000,
             true
         )
+
+        this.register(() => debouncedRefresh.cancel())
 
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
@@ -111,18 +137,19 @@ export class TimeMachinePlugin extends Plugin {
      * `register-commands`; all four entry points share `openPastView`.
      */
     private registerPastViewEntryPoints(): void {
-        this.addRibbonIcon('history', 'Open past view for current note', () => {
-            if (!this.settings.pastViewEnabled) {
-                new Notice('Time Machine: The past view is disabled in settings')
-                return
+        this.pastViewRibbonEl = this.addRibbonIcon(
+            'history',
+            'Open past view for current note',
+            () => {
+                const file = this.resolveActiveFile()
+                if (!file || file.extension !== 'md') {
+                    new Notice('Time Machine: Open a markdown note first')
+                    return
+                }
+                void openPastView(this, file)
             }
-            const file = this.resolveActiveFile()
-            if (!file || file.extension !== 'md') {
-                new Notice('Time Machine: Open a markdown note first')
-                return
-            }
-            void openPastView(this, file)
-        })
+        )
+        this.syncPastViewRibbon()
 
         const addMenuItem = (menu: Menu, file: TAbstractFile | null): void => {
             if (!this.settings.pastViewEnabled) return
@@ -266,6 +293,9 @@ export class TimeMachinePlugin extends Plugin {
 
         if (!loadedSettings) {
             log('Using default settings', 'debug')
+            // Assigned explicitly rather than left to the field initialiser, so
+            // this method is correct on its own.
+            this.settings = { ...DEFAULT_SETTINGS }
             return
         }
 

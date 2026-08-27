@@ -167,4 +167,39 @@ describe('neutraliseExecutableBlocks', () => {
             expect(neutralised).toEqual([])
         })
     })
+
+    describe('inline Dataview', () => {
+        test('defuses inline JavaScript', () => {
+            // `$= ...` runs JS and is not a fenced block, so the fence scanner
+            // never saw it.
+            const { markdown, neutralised } = neutraliseExecutableBlocks('Today `$= dv.date()` ok')
+            expect(neutralised).toContain('inline-dataview')
+            expect(markdown).not.toMatch(/(^|[^\\])`\s*\$=/)
+        })
+
+        test('defuses inline queries', () => {
+            const { neutralised } = neutraliseExecutableBlocks('Name `= this.file.name`')
+            expect(neutralised).toContain('inline-dataview')
+        })
+
+        test('leaves ordinary inline code alone', () => {
+            const input = 'Use `const a = 1` and `npm = bad` here'
+            const { markdown, neutralised } = neutraliseExecutableBlocks(input)
+            expect(markdown).toBe(input)
+            expect(neutralised).toEqual([])
+        })
+
+        test('leaves inline syntax inside a fenced block alone', () => {
+            // Inside a code block it is already literal, and escaping it there
+            // would corrupt what the user sees.
+            const input = '```text\nexample `$= dv.date()` shown literally\n```'
+            const { markdown } = neutraliseExecutableBlocks(input)
+            expect(markdown).toBe(input)
+        })
+
+        test('defuses inline syntax inside a blockquote', () => {
+            const { neutralised } = neutraliseExecutableBlocks('> Today `$= dv.date()`')
+            expect(neutralised).toContain('inline-dataview')
+        })
+    })
 })

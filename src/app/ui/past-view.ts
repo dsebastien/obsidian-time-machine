@@ -63,6 +63,9 @@ export class PastView extends ItemView implements HistoryView {
     /** Guards async markdown rendering against a newer render finishing first. */
     private renderGeneration = 0
 
+    /** True while `setState` is applying saved state, so it is not re-saved. */
+    private hydrating = false
+
     override navigation = true
 
     constructor(leaf: WorkspaceLeaf, plugin: TimeMachinePlugin) {
@@ -109,15 +112,24 @@ export class PastView extends ItemView implements HistoryView {
     }
 
     override async setState(state: unknown, result: ViewStateResult): Promise<void> {
+        this.hydrating = true
         this.state = normalisePastViewState(state)
-        this.session.restoreSelection(this.state.snapshotId, this.state.snapshotTimestamp)
+        this.session.restoreSelection(
+            this.state.snapshotId,
+            this.state.snapshotTimestamp,
+            this.state.filePath
+        )
 
         const path = this.state.filePath
         const file = path === null ? null : this.app.vault.getFileByPath(path)
 
         // The note may have been renamed or deleted since the layout was saved.
         // That is an empty state, not a crash.
-        await this.updateForFile(file)
+        try {
+            await this.updateForFile(file)
+        } finally {
+            this.hydrating = false
+        }
         await super.setState(state, result)
     }
 
@@ -159,6 +171,9 @@ export class PastView extends ItemView implements HistoryView {
     }
 
     private clearRenderChild(): void {
+        // Invalidate any in-flight markdown render: its results belong to a body
+        // state that is about to be replaced.
+        this.renderGeneration++
         if (this.renderChild) {
             this.removeChild(this.renderChild)
             this.renderChild = null
@@ -171,7 +186,12 @@ export class PastView extends ItemView implements HistoryView {
         const outcome = await this.session.loadFor(file)
         if (outcome === 'superseded') return
 
+        const previousPath = this.state.filePath
         this.state.filePath = file?.path ?? null
+        // Persist the note the view ended up on, or a restart reopens the old
+        // one. Skipped during setState hydration, which is already the saved state.
+        if (previousPath !== this.state.filePath && !this.hydrating) this.persist()
+
         // `bodyEl` is undefined until onOpen runs; setState can land first.
         if (!this.bodyEl) return
 
@@ -221,11 +241,13 @@ export class PastView extends ItemView implements HistoryView {
         })
 
         this.renderBindToggle(titleRow)
-        this.renderActionsMenu(titleRow)
 
         // With no history there is nothing to navigate, compare or restore, so
-        // none of the controls render — per issue #9.
+        // none of the controls render — including the actions menu, which would
+        // otherwise offer restores with nothing selected (issue #9).
         if (count === 0) return
+
+        this.renderActionsMenu(titleRow)
 
         this.timelineBar = new TimelineBarComponent(this.tmHeaderEl, {
             onSelect: (snapshotId) => {
@@ -278,6 +300,15 @@ export class PastView extends ItemView implements HistoryView {
             this.state.boundToFile = !this.state.boundToFile
             this.persist()
             this.renderHeader()
+
+            // Switching to follow mode should follow *now*, not wait for the
+            // next workspace event.
+            if (!this.state.boundToFile) {
+                const active = this.plugin.resolveActiveFile()
+                if (active && active.path !== this.session.file?.path) {
+                    void this.updateForFile(active)
+                }
+            }
         })
     }
 
@@ -342,8 +373,6 @@ export class PastView extends ItemView implements HistoryView {
         const file = this.session.file
         if (!snapshot || !file) return
 
-        const generation = ++this.renderGeneration
-
         // Executable blocks are defused BEFORE rendering: MarkdownRenderer runs
         // every registered post-processor, so a dataviewjs block from an old
         // version would execute — including one the user has since deleted.
@@ -352,6 +381,7 @@ export class PastView extends ItemView implements HistoryView {
             : neutraliseExecutableBlocks(snapshot.data)
 
         this.clearRenderChild()
+        const generation = this.renderGeneration
         this.bodyEl.empty()
 
         if (neutralised.length > 0) {
@@ -383,9 +413,10 @@ export class PastView extends ItemView implements HistoryView {
         }
 
         if (generation !== this.renderGeneration) {
-            // A newer render started while this one was awaiting; its own
-            // clearRenderChild already detached us.
-            return
+            // A newer body render started while this one was awaiting. It has
+            // already replaced `renderChild`, so unload ours directly rather
+            // than leaving a live component attached to detached DOM.
+            this.removeChild(child)
         }
     }
 
@@ -438,6 +469,9 @@ export class PastView extends ItemView implements HistoryView {
         const snapshot = this.session.selectedSnapshot
         const file = this.session.file
         if (!snapshot || !file) return
+        // Refuse a snapshot that does not belong to this note. Both are read
+        // from session state that a concurrent load could have moved on from.
+        if (snapshot.path !== file.path) return
 
         const confirmed = await showConfirmDialog(
             this.app,
@@ -454,6 +488,9 @@ export class PastView extends ItemView implements HistoryView {
         const snapshot = this.session.selectedSnapshot
         const file = this.session.file
         if (!snapshot || !file) return
+        // Refuse a snapshot that does not belong to this note. Both are read
+        // from session state that a concurrent load could have moved on from.
+        if (snapshot.path !== file.path) return
         if (this.plugin.settings.diffComparisonMode === 'next') return
 
         const currentContent = await this.app.vault.read(file)
@@ -461,8 +498,10 @@ export class PastView extends ItemView implements HistoryView {
         // The rendered hunks are addressed against the content the diff was
         // computed from. If the live file moved on, the ordinal no longer points
         // at the same change.
+        // A null base means no diff has been rendered for this state yet, so
+        // the hunk ordinal addresses nothing — refuse rather than guess.
         if (
-            this.session.diffBaseContent !== null &&
+            this.session.diffBaseContent === null ||
             currentContent !== this.session.diffBaseContent
         ) {
             new Notice('Time Machine: The file changed — the diff was refreshed, try again.')
@@ -510,6 +549,7 @@ export class PastView extends ItemView implements HistoryView {
             await this.app.workspace.getLeaf('tab').openFile(created)
         } catch (error) {
             log('Could not open created note', 'error', error)
+            new Notice(`Time Machine: Created "${created.name}" but could not open it`)
         }
     }
 }

@@ -3,6 +3,15 @@ import { Notice } from 'obsidian'
 import { format } from 'date-fns'
 import { log } from '../../utils/log'
 
+function describeError(error: unknown): string {
+    return error instanceof Error ? error.message : String(error)
+}
+
+/** Whether a `vault.create` rejection was a name collision. */
+function isAlreadyExistsError(error: unknown): boolean {
+    return /already exists/i.test(describeError(error))
+}
+
 /**
  * Writes a historical version out as a new note beside the original.
  *
@@ -39,13 +48,19 @@ export class NoteExportService {
                 log('Created note from snapshot', 'info', created.path)
                 return created
             } catch (error) {
-                // Almost certainly "file already exists" — try the next suffix.
-                // Any other failure surfaces once the attempts run out.
-                log('Could not create note, retrying', 'debug', { path, error })
+                // Only a name collision is worth retrying. A permission error or
+                // an invalid path would fail identically twenty times over and
+                // bury the real reason.
+                if (!isAlreadyExistsError(error)) {
+                    log('Could not create note from snapshot', 'error', { path, error })
+                    new Notice(`Time Machine: Could not create the note — ${describeError(error)}`)
+                    return null
+                }
+                log('Name taken, trying the next suffix', 'debug', path)
             }
         }
 
-        new Notice('Time Machine: Could not create the note')
+        new Notice('Time Machine: Could not find a free file name for this version')
         return null
     }
 }

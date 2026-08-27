@@ -34,6 +34,16 @@ const EXECUTABLE_LANGUAGES = new Set([
 /** Language the neutralised blocks are relabelled to. Nothing processes it. */
 const INERT_LANGUAGE = 'text'
 
+/**
+ * Dataview's *inline* syntax: `` `$= expr` `` runs JavaScript and `` `= expr` ``
+ * evaluates a query, both against the current vault. Neither is a fenced block,
+ * so the fence scanner never sees them.
+ *
+ * They are defused by escaping the backticks, which stops a code span forming at
+ * all — so no inline post-processor runs — while leaving the text readable.
+ */
+const INLINE_DATAVIEW_RE = /`(\s*\$?=[^`\n]*)`/g
+
 export interface NeutraliseResult {
     /** Markdown safe to hand to `MarkdownRenderer.render`. */
     markdown: string
@@ -87,6 +97,18 @@ export function neutraliseExecutableBlocks(markdown: string): NeutraliseResult {
         if (line === undefined) continue
 
         const match = FENCE_RE.exec(line)
+
+        // Inline Dataview only executes outside fenced blocks; inside one it is
+        // already literal text, and escaping it there would corrupt what the
+        // user sees.
+        if (!match && openFenceChar === null) {
+            INLINE_DATAVIEW_RE.lastIndex = 0
+            if (INLINE_DATAVIEW_RE.test(line)) {
+                neutralised.push('inline-dataview')
+                lines[i] = line.replace(INLINE_DATAVIEW_RE, '\\`$1\\`')
+            }
+        }
+
         if (!match) continue
 
         const [, prefix = '', fence = '', info = ''] = match

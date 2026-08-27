@@ -169,7 +169,10 @@ export class TimeMachineView extends ItemView implements HistoryView {
             })
             setIcon(openBtn, 'history')
             openBtn.addEventListener('click', () => {
-                void openPastView(this.plugin, file, this.session.getSelectedId())
+                void openPastView(this.plugin, file, {
+                    snapshotId: this.session.getSelectedId(),
+                    snapshotTimestamp: this.session.getSelectedTs()
+                })
             })
         }
 
@@ -231,6 +234,9 @@ export class TimeMachineView extends ItemView implements HistoryView {
         const snapshot = this.session.selectedSnapshot
         const file = this.session.file
         if (!snapshot || !file) return
+        // Refuse a snapshot that does not belong to this note. Both are read
+        // from session state that a concurrent load could have moved on from.
+        if (snapshot.path !== file.path) return
 
         const confirmed = await showConfirmDialog(
             this.app,
@@ -248,6 +254,9 @@ export class TimeMachineView extends ItemView implements HistoryView {
         const snapshot = this.session.selectedSnapshot
         const file = this.session.file
         if (!snapshot || !file) return
+        // Refuse a snapshot that does not belong to this note. Both are read
+        // from session state that a concurrent load could have moved on from.
+        if (snapshot.path !== file.path) return
 
         // In `next` mode the displayed hunks relate two historical versions, not
         // the current file — applying one to the live file is undefined. The

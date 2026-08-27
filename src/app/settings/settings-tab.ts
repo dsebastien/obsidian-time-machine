@@ -34,6 +34,7 @@ export class TimeMachineSettingTab extends PluginSettingTab {
                 toggle.setValue(this.plugin.settings.pastViewEnabled).onChange(async (value) => {
                     this.plugin.settings.pastViewEnabled = value
                     await this.plugin.saveSettings()
+                    this.plugin.syncPastViewRibbon()
                 })
             })
 
@@ -60,6 +61,10 @@ export class TimeMachineSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.pastViewExecuteBlocks = value
                         await this.plugin.saveSettings()
+                        // Turning this off must unload code that is already
+                        // running in an open past view, not just affect the next
+                        // render.
+                        this.plugin.refreshAllViews()
                     })
             })
     }

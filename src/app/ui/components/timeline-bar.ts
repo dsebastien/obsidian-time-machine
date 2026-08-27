@@ -32,6 +32,12 @@ export class TimelineBarComponent {
     private snapshots: Snapshot[] = []
     private selectedId: string | null = null
     private trackEl: HTMLElement | null = null
+    /**
+     * Whether the track had focus when it was last replaced. Every selection
+     * re-renders, which destroys the focused element — without this, keyboard
+     * navigation worked for exactly one keypress.
+     */
+    private trackHadFocus = false
 
     constructor(parent: HTMLElement, callbacks: TimelineBarCallbacks) {
         this.container = parent.createDiv({ cls: 'tm-timeline' })
@@ -45,8 +51,12 @@ export class TimelineBarComponent {
     }
 
     render(snapshots: Snapshot[], selectedId: string | null): void {
+        this.trackHadFocus =
+            this.trackEl !== null && this.trackEl.ownerDocument.activeElement === this.trackEl
+
         this.snapshots = snapshots
         this.selectedId = selectedId
+        this.trackEl = null
         this.container.empty()
 
         if (snapshots.length === 0) return
@@ -79,6 +89,23 @@ export class TimelineBarComponent {
         track.tabIndex = 0
         track.setAttribute('role', 'slider')
         track.setAttribute('aria-label', 'Snapshot timeline')
+
+        // Position is expressed oldest..newest so that "increasing" reads
+        // naturally as moving forward in time.
+        const selectedIndex = this.snapshots.findIndex((s) => s.id === this.selectedId)
+        const last = this.snapshots.length - 1
+        track.setAttribute('aria-valuemin', '0')
+        track.setAttribute('aria-valuemax', String(last))
+        if (selectedIndex !== -1) {
+            const selected = this.snapshots[selectedIndex]
+            track.setAttribute('aria-valuenow', String(last - selectedIndex))
+            if (selected) {
+                track.setAttribute(
+                    'aria-valuetext',
+                    `${formatBackupDate(selected.ts)}, ${formatRelativeTime(selected.ts)}`
+                )
+            }
+        }
         this.trackEl = track
 
         const olderBtn = row.createEl('button', {
@@ -103,6 +130,10 @@ export class TimelineBarComponent {
         const layout = computeTimelineLayout(this.snapshots, this.measure())
         this.renderTicks(track, layout)
         this.renderEdgeLabels(layout)
+
+        // Keep the keyboard on the track across the re-render that each
+        // selection triggers.
+        if (this.trackHadFocus) track.focus()
     }
 
     private renderTicks(track: HTMLElement, layout: TimelineLayout): void {

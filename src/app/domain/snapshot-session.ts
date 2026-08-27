@@ -63,6 +63,9 @@ export class SnapshotSession {
 
     diffBaseContent: string | null = null
 
+    /** Path a restored (persisted) selection belongs to, so it is not applied to another note. */
+    private restoredForPath: string | null = null
+
     /**
      * `getApp` is a accessor rather than a value because a view's `app` is
      * assigned by Obsidian's `View` base class, so it is not necessarily the
@@ -78,9 +81,29 @@ export class SnapshotSession {
         return this.getApp()
     }
 
+    /**
+     * Reads the file, or null if it cannot be read.
+     *
+     * A note can be deleted or renamed while a view is open — the poll then
+     * reads a path that no longer exists and `vault.read` rejects with ENOENT.
+     * Treating that as "no content" keeps it out of the console and lets the
+     * caller fall back to an empty state.
+     */
+    private async readFile(file: TFile): Promise<string | null> {
+        try {
+            return await this.app.vault.read(file)
+        } catch (error) {
+            log('Could not read file', 'debug', { path: file.path, error })
+            return null
+        }
+    }
+
     get selectedSnapshot(): Snapshot | null {
         if (this.selectedId === null) return null
-        return this.snapshots.find((s) => s.id === this.selectedId) ?? null
+        const snapshot = this.snapshots.find((s) => s.id === this.selectedId) ?? null
+        // Belt and braces: never hand back a snapshot belonging to another note.
+        if (snapshot && this.file && snapshot.path !== this.file.path) return null
+        return snapshot
     }
 
     get selectedIndex(): number | null {
@@ -97,10 +120,16 @@ export class SnapshotSession {
         return this.selectedTs
     }
 
-    /** Restores a persisted selection before any snapshots are loaded. */
-    restoreSelection(id: string | null, ts: number | null): void {
+    /**
+     * Restores a persisted selection before any snapshots are loaded.
+     *
+     * `path` scopes it: a git snapshot id is `git-<commitHash>` and one commit
+     * can touch many files, so an id alone could latch onto a different note.
+     */
+    restoreSelection(id: string | null, ts: number | null, path: string | null = null): void {
         this.selectedId = id
         this.selectedTs = ts
+        this.restoredForPath = path
     }
 
     select(id: string | null): void {
@@ -122,8 +151,26 @@ export class SnapshotSession {
             return 'updated'
         }
 
+        const pathChanged = this.file?.path !== file.path
         this.file = file
         this.diffBaseContent = null
+
+        if (pathChanged) {
+            // Drop the previous note's snapshots *before* awaiting. They used to
+            // survive the whole fetch, so a restore clicked during it combined
+            // the new file with the old file's selected snapshot and wrote one
+            // note's history into another.
+            this.allSnapshots = []
+            this.snapshots = []
+
+            // A selection only carries over when it was explicitly restored for
+            // this exact path (workspace layout, or a hand-off from the sidebar).
+            if (this.restoredForPath !== file.path) {
+                this.selectedId = null
+                this.selectedTs = null
+            }
+        }
+        this.restoredForPath = null
 
         let fetched: Snapshot[]
         try {
@@ -142,8 +189,16 @@ export class SnapshotSession {
             return 'updated'
         }
 
-        const currentContent = await this.app.vault.read(file)
+        const currentContent = await this.readFile(file)
         if (generation !== this.dataGeneration) return 'superseded'
+
+        if (currentContent === null) {
+            // The file went away mid-load; show nothing rather than a history
+            // for a note that no longer exists.
+            this.snapshots = []
+            this.reconcileSelection()
+            return 'updated'
+        }
 
         this.snapshots = fetched.filter((snapshot) => snapshot.data !== currentContent)
         this.reconcileSelection()
@@ -159,8 +214,9 @@ export class SnapshotSession {
         if (!this.file) return 'unchanged'
         const generation = ++this.dataGeneration
 
-        const currentContent = await this.app.vault.read(this.file)
+        const currentContent = await this.readFile(this.file)
         if (generation !== this.dataGeneration) return 'superseded'
+        if (currentContent === null) return 'unchanged'
 
         const previous = this.snapshots
         this.snapshots = this.allSnapshots.filter((snapshot) => snapshot.data !== currentContent)
@@ -185,7 +241,11 @@ export class SnapshotSession {
             return
         }
 
-        if (this.selectedId !== null && this.snapshots.some((s) => s.id === this.selectedId)) {
+        const stillPresent = this.snapshots.find((s) => s.id === this.selectedId)
+        if (this.selectedId !== null && stillPresent) {
+            // Keep the timestamp in step, or a later fallback would navigate
+            // from a stale point in time.
+            this.selectedTs = stillPresent.ts
             return
         }
 
@@ -223,8 +283,8 @@ export class SnapshotSession {
         if (index === null || !snapshot || !this.file) return null
 
         const generation = ++this.diffGeneration
-        const currentContent = await this.app.vault.read(this.file)
-        if (generation !== this.diffGeneration) return null
+        const currentContent = await this.readFile(this.file)
+        if (generation !== this.diffGeneration || currentContent === null) return null
 
         const mode = this.getSettings().diffComparisonMode
 
