@@ -8,6 +8,8 @@ Ever accidentally deleted a paragraph, overwrote a section, or wished you could 
 
 Time Machine turns Obsidian's built-in File Recovery snapshots and git commits into a visual version rail. Step through your note's history, see exactly what changed, and restore anything -- an entire version or just a single paragraph.
 
+![The past view open beside the live editor: the version rail and an old version of the note on the left, the note being edited in the middle, and the Time Machine panel with a diff on the right](docs/images/side-by-side.png)
+
 ## Features
 
 - **Side-by-side view** -- open a note as it was, beside your live editor. Step through versions on the left while you keep editing on the right.

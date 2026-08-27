@@ -11,11 +11,15 @@ Open the command palette (`Ctrl/Cmd + P`) and run **Time Machine: Open view**. T
 
 The panel automatically displays snapshots for whichever file is currently active. When you switch to a different file, the view updates automatically.
 
+For the fuller experience, run **Time Machine: Compare versions side by side** (or click the two-columns icon in the ribbon) to open a note's history beside the editor -- see [The past view](#the-past-view) below.
+
 ## The past view
+
+![The past view open beside the live editor: the version rail and an old version of the note on the left, the note being edited in the middle, and the Time Machine panel with a diff on the right](images/side-by-side.png)
 
 The sidebar is the quick look. The past view is the full one: it opens your note **as it was**, in a pane beside the editor, so you can read an old version on the left while your real, editable note stays on the right. Drag the divider to resize.
 
-Open it with the command **Open past view for current note**, the clock icon in the ribbon, right-click a note in the file explorer, or the history button in the sidebar view's header (which carries your current selection across).
+Open it with the command **Time Machine: Compare versions side by side**, the two-columns icon in the ribbon, a right-click on a note in the file explorer or inside the editor, or the **Side by side** button in the panel's header (which carries your current selection across).
 
 On mobile, or when the window is too narrow to split usefully, it opens as a full-width tab instead.
 
@@ -38,7 +42,20 @@ This is deliberate. Rendering an old version would otherwise execute that code a
 | Command                                                         | Description                                                                                    |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | **Time Machine: Open view**                                     | Opens the Time Machine panel in the sidebar                                                    |
+| **Time Machine: Compare versions side by side**                 | Opens the side-by-side view for the current note, beside the editor                            |
 | **Time Machine: Force file recovery snapshot for current file** | Immediately creates a File Recovery snapshot for the active file, bypassing the interval timer |
+
+Only markdown notes have a history, so **Compare versions side by side** does not appear unless a markdown note is active. It is also hidden entirely when the side-by-side view is turned off in settings.
+
+### Other ways in
+
+Besides the command palette, the side-by-side view can be opened from:
+
+- The **ribbon icon** (two columns) in the left ribbon
+- **Right-clicking a note** in the file explorer, or right-clicking inside the editor
+- The **Side by side** button in the Time Machine panel's header, which carries your current selection across so you do not lose your place
+
+The ribbon icon disappears when the side-by-side view is disabled in settings.
 
 ## Browsing snapshots
 
