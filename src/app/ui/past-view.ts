@@ -243,7 +243,11 @@ export class PastView extends ItemView implements HistoryView {
         if (!file) return
 
         const titleRow = this.tmHeaderEl.createDiv({ cls: 'tm-past-title-row' })
-        titleRow.createDiv({ cls: 'tm-header-file', text: file.name })
+        titleRow.createDiv({
+            cls: 'tm-header-file',
+            text: file.name,
+            attr: { 'aria-label': file.path }
+        })
 
         const count = this.session.snapshots.length
         titleRow.createDiv({

@@ -724,11 +724,11 @@
 }
 
 .tm-past-title-row {
-    @apply flex items-center gap-2;
+    @apply flex min-w-0 items-center gap-2;
 }
 
 .tm-past-title-row .tm-header-file {
-    @apply flex-1 truncate;
+    @apply min-w-0 flex-1 truncate;
 }
 
 .tm-past-bind.is-active {
@@ -802,12 +802,16 @@
     padding: 0;
 }
 
+/* `flex: 1` plus `min-width: 0` are both required. Without them the row sizes
+   to its content, so a long filename pushed the "Side by side" button past the
+   panel edge and the version count clean off screen — and the name itself never
+   truncated, because `text-overflow` needs a constrained parent to act on. */
 .tm-header-row {
-    @apply flex items-center gap-2;
+    @apply flex min-w-0 flex-1 items-center gap-2;
 }
 
 .tm-header-row .tm-header-file {
-    @apply flex-1 truncate;
+    @apply min-w-0 flex-1 truncate;
 }
 
 .tm-hidden {

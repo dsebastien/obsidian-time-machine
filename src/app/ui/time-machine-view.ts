@@ -158,7 +158,12 @@ export class TimeMachineView extends ItemView implements HistoryView {
 
         const count = this.session.snapshots.length
         const row = this.tmHeaderEl.createDiv({ cls: 'tm-header-row' })
-        row.createDiv({ cls: 'tm-header-file', text: file.name })
+        // The name truncates in a narrow panel, so the full path is on hover.
+        row.createDiv({
+            cls: 'tm-header-file',
+            text: file.name,
+            attr: { 'aria-label': file.path }
+        })
 
         if (this.plugin.settings.pastViewEnabled) {
             // Promotes to the full side-by-side view, carrying the current
