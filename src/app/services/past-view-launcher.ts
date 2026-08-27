@@ -102,16 +102,17 @@ async function doOpenPastView(
         active: true,
         state: {
             filePath: file.path,
-            boundToFile: true,
+            // Follows the active note by default, like the sidebar panel.
+            boundToFile: false,
             snapshotId: selection.snapshotId,
             snapshotTimestamp: selection.snapshotTimestamp,
             showDiff: plugin.settings.pastViewDefaultShowDiff
         }
     })
 
-    // Obsidian's own leaf pinning, unrelated to the view's `boundToFile`: it
-    // stops the leaf being recycled for the next file the user opens.
-    leaf.setPinned(true)
+    // The leaf is deliberately NOT pinned. `PastView.navigation = false`
+    // already stops Obsidian recycling it to open a file, and pinning showed a
+    // pin marker on the tab that invited the user to remove that protection.
     await app.workspace.revealLeaf(leaf)
 }
 

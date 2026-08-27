@@ -12,9 +12,15 @@ describe('normalisePastViewState', () => {
         expect(normalisePastViewState(42)).toEqual(DEFAULT_PAST_VIEW_STATE)
     })
 
-    test('keeps a valid false rather than falling back to the default', () => {
-        // boundToFile defaults to true — a persisted `false` must survive.
-        expect(normalisePastViewState({ boundToFile: false }).boundToFile).toBe(false)
+    test('follows the active note by default', () => {
+        // Like the sidebar panel. Binding by default left the pane showing a
+        // stale note as soon as the user moved on.
+        expect(DEFAULT_PAST_VIEW_STATE.boundToFile).toBe(false)
+    })
+
+    test('keeps a valid true rather than falling back to the default', () => {
+        // boundToFile defaults to false — a persisted `true` must survive.
+        expect(normalisePastViewState({ boundToFile: true }).boundToFile).toBe(true)
     })
 
     test('keeps a valid true for showDiff which defaults to false', () => {

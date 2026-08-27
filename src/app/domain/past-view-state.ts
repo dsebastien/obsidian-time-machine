@@ -5,9 +5,12 @@ export interface PastViewState {
     /**
      * When true the view stays on `filePath` regardless of the active file.
      *
-     * Deliberately NOT called "pinned": Obsidian's `ViewState.pinned` already
-     * means something else (the leaf is not reused for navigation), and the two
-     * are set independently.
+     * Off by default: the view follows the active note, like the sidebar panel.
+     * Binding by default meant the pane went stale the moment you moved to
+     * another note, and you had to notice a small toggle to fix it.
+     *
+     * Deliberately NOT called "pinned": Obsidian's `ViewState.pinned` means
+     * something else (the leaf is not reused for navigation).
      */
     boundToFile: boolean
     /** Selected snapshot id. */
@@ -24,7 +27,7 @@ export interface PastViewState {
 
 export const DEFAULT_PAST_VIEW_STATE: PastViewState = {
     filePath: null,
-    boundToFile: true,
+    boundToFile: false,
     snapshotId: null,
     snapshotTimestamp: null,
     showDiff: false

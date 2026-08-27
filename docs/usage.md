@@ -24,7 +24,7 @@ Once open:
 - **Click a version** on the rail at the top. Every version gets its own mark -- none are merged away -- grouped under headings like Today, 7 days, 30 days and then by year. Hovering a mark tells you exactly which version it is, and clicking a heading jumps to the newest version in that group.
 - **Keyboard**: focus the rail, then arrow left/right to step one version, PageUp/PageDown to move ten at a time, Home for the newest and End for the oldest.
 - **Show changes** flips the pane between the old version and the diff.
-- **Follow / bind** (the pin button) decides whether the pane stays on this note or follows whatever you open. It stays bound by default.
+- **Follow / bind** (the pin button) decides whether the pane follows whatever note you open, or stays on one. It follows by default, like the sidebar panel — click the pin to hold it on the current note.
 - **The menu** (⋮) restores the whole version, copies it, or saves it as a new note beside the original.
 
 ### Old versions do not run their code

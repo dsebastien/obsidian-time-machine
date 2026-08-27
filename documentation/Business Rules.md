@@ -78,7 +78,9 @@ The past view (`time-machine-past-view`) shows a note as it was at a chosen vers
 
 **The live file is never written to for display purposes.** Swapping the real editor's content to show an old version would dirty the file, fire `modify`, and pollute file-recovery with versions the user never typed.
 
-A past view is **bound** to its file by default and does not follow the active file; a header toggle switches it to following. "Bound" is deliberately not called "pinned": `ViewState.pinned` is Obsidian's own leaf pinning (the leaf is not reused for navigation) and is set independently — the launcher sets it so the leaf is not recycled.
+A past view **follows the active note by default**, like the sidebar panel; a header toggle binds it to one note instead. Binding by default left the pane showing a stale note the moment the user moved on, and required noticing a small toggle to fix.
+
+The leaf is **not pinned**. `PastView.navigation = false` already stops Obsidian recycling the leaf to open a file, which is the only thing pinning was buying; the pin marker on the tab merely invited the user to remove that protection. A pin left over in a saved workspace is cleared when the view opens. "Bound" is deliberately not called "pinned" for the same reason — `ViewState.pinned` means something else.
 
 Only one past view per file: `openPastView` reveals an existing one instead of opening a second. Existing views are detected via `leaf.getViewState()`, not `leaf.view`, because a deferred leaf exposes a `DeferredView` placeholder until activated.
 

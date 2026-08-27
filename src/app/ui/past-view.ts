@@ -66,7 +66,11 @@ export class PastView extends ItemView implements HistoryView {
     /** True while `setState` is applying saved state, so it is not re-saved. */
     private hydrating = false
 
-    override navigation = true
+    // Static, in Obsidian's sense: opening a file must never replace this view.
+    // That protection used to come from pinning the leaf, which showed a pin
+    // marker on the tab and invited the user to unpin it — at which point
+    // opening any note would silently destroy the view.
+    override navigation = false
 
     constructor(leaf: WorkspaceLeaf, plugin: TimeMachinePlugin) {
         super(leaf)
@@ -150,6 +154,13 @@ export class PastView extends ItemView implements HistoryView {
         container.empty()
         const root = container as HTMLElement
         root.addClass('tm-root', 'tm-past-root')
+
+        // Earlier versions pinned the leaf to stop Obsidian recycling it for a
+        // file. `navigation = false` does that without a pin marker on the tab,
+        // so any pin left over from a saved workspace is pure annoyance.
+        if (this.leaf.getViewState().pinned === true) {
+            this.leaf.setPinned(false)
+        }
 
         this.tmHeaderEl = root.createDiv({ cls: 'tm-past-header' })
         this.bodyEl = root.createDiv({ cls: 'tm-past-body' })
