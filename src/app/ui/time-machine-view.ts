@@ -161,13 +161,20 @@ export class TimeMachineView extends ItemView implements HistoryView {
         row.createDiv({ cls: 'tm-header-file', text: file.name })
 
         if (this.plugin.settings.pastViewEnabled) {
-            // Promotes to the full past view, carrying the current selection so
-            // the user does not lose their place.
+            // Promotes to the full side-by-side view, carrying the current
+            // selection so the user does not lose their place.
+            //
+            // Labelled, and deliberately NOT a clock-with-arrow: an icon-only
+            // history glyph next to a version reads as "revert to this", which
+            // is the opposite of what it does.
             const openBtn = row.createEl('button', {
-                cls: 'tm-header-open-past clickable-icon',
-                attr: { 'aria-label': 'Open past view' }
+                cls: 'tm-header-open-past',
+                text: 'Side by side',
+                attr: { 'aria-label': 'Open this version beside the note' }
             })
-            setIcon(openBtn, 'history')
+            const openIcon = openBtn.createSpan({ cls: 'tm-header-open-past-icon' })
+            setIcon(openIcon, 'columns-2')
+            openBtn.prepend(openIcon)
             openBtn.addEventListener('click', () => {
                 void openPastView(this.plugin, file, {
                     snapshotId: this.session.getSelectedId(),
@@ -178,7 +185,7 @@ export class TimeMachineView extends ItemView implements HistoryView {
 
         this.tmHeaderEl.createDiv({
             cls: 'tm-header-count',
-            text: `${String(count)} snapshot${count === 1 ? '' : 's'}`
+            text: `${String(count)} version${count === 1 ? '' : 's'}`
         })
     }
 

@@ -158,8 +158,8 @@ export class TimeMachinePlugin extends Plugin {
 
             menu.addItem((item) =>
                 item
-                    .setTitle('Open past view')
-                    .setIcon('history')
+                    .setTitle('Compare versions side by side')
+                    .setIcon('columns-2')
                     .onClick(() => {
                         void openPastView(this, file)
                     })

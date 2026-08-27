@@ -1,13 +1,14 @@
 import { setIcon } from 'obsidian'
 import type { Snapshot } from '../../types/snapshot.intf'
 import {
-    computeTimelineLayout,
-    findTickForSnapshot,
+    computeVersionRail,
+    edgeSelection,
+    findSegment,
     stepSelection,
-    type TimelineLayout
+    type RailGroup,
+    type VersionRail
 } from '../../domain/timeline-layout'
 import { formatBackupDate, formatRelativeTime } from '../../domain/backup'
-import { formatSnapshotLabel } from '../../domain/snapshot'
 
 export interface TimelineBarCallbacks {
     /** Fired only for user-driven selection changes, never on render. */
@@ -15,15 +16,12 @@ export interface TimelineBarCallbacks {
 }
 
 /**
- * Timeline of a note's snapshots: left = newest, right = oldest.
+ * The version rail: every version as an equal-width segment, newest on the
+ * left, grouped under time-bucket headings.
  *
  * A **controlled** component — it renders whatever `selectedId` it is given and
- * never selects anything itself. The old slider auto-selected index 0 as a
- * render side effect, which made selection impossible to preserve across
- * re-renders; the owning session decides the selection now.
- *
- * Ticks sit proportionally to time, so a burst of saves reads as a burst.
- * Layout maths lives in `domain/timeline-layout` and is unit-tested there.
+ * never selects anything itself, so the owning session stays the single source
+ * of truth for selection.
  */
 export class TimelineBarComponent {
     private readonly container: HTMLElement
@@ -31,177 +29,213 @@ export class TimelineBarComponent {
 
     private snapshots: Snapshot[] = []
     private selectedId: string | null = null
-    private trackEl: HTMLElement | null = null
+    private railEl: HTMLElement | null = null
     /**
-     * Whether the track had focus when it was last replaced. Every selection
-     * re-renders, which destroys the focused element — without this, keyboard
-     * navigation worked for exactly one keypress.
+     * Whether the rail had focus when it was last replaced. Every selection
+     * re-renders, destroying the focused element — without restoring focus,
+     * keyboard navigation worked for exactly one keypress.
      */
-    private trackHadFocus = false
+    private railHadFocus = false
 
     constructor(parent: HTMLElement, callbacks: TimelineBarCallbacks) {
-        this.container = parent.createDiv({ cls: 'tm-timeline' })
+        this.container = parent.createDiv({ cls: 'tm-rail-wrap' })
         this.callbacks = callbacks
     }
 
-    /** Current width of the track, or 0 before the element has been laid out. */
     private measure(): number {
-        const width = this.trackEl?.clientWidth ?? this.container.clientWidth ?? 0
+        const width = this.container.clientWidth
         return Number.isFinite(width) ? width : 0
     }
 
     render(snapshots: Snapshot[], selectedId: string | null): void {
-        this.trackHadFocus =
-            this.trackEl !== null && this.trackEl.ownerDocument.activeElement === this.trackEl
+        this.railHadFocus =
+            this.railEl !== null && this.railEl.ownerDocument.activeElement === this.railEl
 
         this.snapshots = snapshots
         this.selectedId = selectedId
-        this.trackEl = null
+        this.railEl = null
         this.container.empty()
 
         if (snapshots.length === 0) return
 
+        const rail = computeVersionRail(snapshots, this.measure(), Date.now())
         const selected = snapshots.find((snapshot) => snapshot.id === selectedId) ?? null
 
-        // With a single snapshot the navigation controls are pointless, but the
-        // selected-version information still renders — matching the existing
-        // business rule for the slider.
+        // One version means nothing to navigate between — the details still
+        // render, matching the long-standing rule for the old slider.
         if (snapshots.length > 1) {
-            this.renderTrack()
+            this.renderRail(rail)
         }
 
-        this.renderInfo(selected)
+        this.renderDetails(selected, rail)
     }
 
-    private renderTrack(): void {
-        const row = this.container.createDiv({ cls: 'tm-timeline-row' })
+    private renderRail(rail: VersionRail): void {
+        const row = this.container.createDiv({ cls: 'tm-rail-row' })
 
-        const newerBtn = row.createEl('button', {
-            cls: 'tm-timeline-nav clickable-icon',
-            attr: { 'aria-label': 'Newer version' }
-        })
-        setIcon(newerBtn, 'chevron-left')
-        newerBtn.addEventListener('click', () => {
+        this.renderNavButton(row, 'chevron-left', 'Newer version', () => {
             this.step(-1)
         })
 
-        const track = row.createDiv({ cls: 'tm-timeline-track' })
-        track.tabIndex = 0
-        track.setAttribute('role', 'slider')
-        track.setAttribute('aria-label', 'Snapshot timeline')
+        const rail_ = row.createDiv({ cls: 'tm-rail' })
+        rail_.tabIndex = 0
+        this.applyRailAria(rail_)
+        this.railEl = rail_
 
-        // Position is expressed oldest..newest so that "increasing" reads
-        // naturally as moving forward in time.
-        const selectedIndex = this.snapshots.findIndex((s) => s.id === this.selectedId)
-        const last = this.snapshots.length - 1
-        track.setAttribute('aria-valuemin', '0')
-        track.setAttribute('aria-valuemax', String(last))
-        if (selectedIndex !== -1) {
-            const selected = this.snapshots[selectedIndex]
-            track.setAttribute('aria-valuenow', String(last - selectedIndex))
-            if (selected) {
-                track.setAttribute(
-                    'aria-valuetext',
-                    `${formatBackupDate(selected.ts)}, ${formatRelativeTime(selected.ts)}`
-                )
-            }
-        }
-        this.trackEl = track
-
-        const olderBtn = row.createEl('button', {
-            cls: 'tm-timeline-nav clickable-icon',
-            attr: { 'aria-label': 'Older version' }
-        })
-        setIcon(olderBtn, 'chevron-right')
-        olderBtn.addEventListener('click', () => {
+        this.renderNavButton(row, 'chevron-right', 'Older version', () => {
             this.step(1)
         })
 
-        track.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (event.key === 'ArrowLeft') {
-                event.preventDefault()
-                this.step(-1)
-            } else if (event.key === 'ArrowRight') {
-                event.preventDefault()
-                this.step(1)
-            }
+        rail_.addEventListener('keydown', (event: KeyboardEvent) => {
+            const handled = this.handleKey(event.key)
+            if (handled) event.preventDefault()
         })
 
-        const layout = computeTimelineLayout(this.snapshots, this.measure())
-        this.renderTicks(track, layout)
-        this.renderEdgeLabels(layout)
+        for (const group of rail.groups) {
+            this.renderGroup(rail_, group, rail.tier)
+        }
 
-        // Keep the keyboard on the track across the re-render that each
-        // selection triggers.
-        if (this.trackHadFocus) track.focus()
+        // Keep the keyboard on the rail across the re-render each selection triggers.
+        if (this.railHadFocus) rail_.focus()
     }
 
-    private renderTicks(track: HTMLElement, layout: TimelineLayout): void {
-        const selectedTick = findTickForSnapshot(layout, this.selectedId)
+    private renderNavButton(
+        parent: HTMLElement,
+        icon: string,
+        label: string,
+        onClick: () => void
+    ): void {
+        const btn = parent.createEl('button', {
+            cls: 'tm-rail-nav clickable-icon',
+            attr: { 'aria-label': label }
+        })
+        setIcon(btn, icon)
+        btn.addEventListener('click', onClick)
+    }
 
-        track.createDiv({ cls: 'tm-timeline-line' })
+    private applyRailAria(rail: HTMLElement): void {
+        const index = this.snapshots.findIndex((snapshot) => snapshot.id === this.selectedId)
+        const last = this.snapshots.length - 1
 
-        for (const tick of layout.ticks) {
-            const isSelected = selectedTick !== null && tick === selectedTick
-            const classes = ['tm-timeline-tick']
-            if (tick.cluster) classes.push('is-cluster')
+        rail.setAttribute('role', 'slider')
+        rail.setAttribute('aria-label', 'Version history')
+        rail.setAttribute('aria-valuemin', '0')
+        rail.setAttribute('aria-valuemax', String(last))
+
+        if (index === -1) return
+        const selected = this.snapshots[index]
+        // Expressed oldest-to-newest so "increasing" reads as moving forward in time.
+        rail.setAttribute('aria-valuenow', String(last - index))
+        if (selected) {
+            rail.setAttribute(
+                'aria-valuetext',
+                `Version ${String(last - index + 1)} of ${String(this.snapshots.length)}, ${formatRelativeTime(selected.ts)}`
+            )
+        }
+    }
+
+    private renderGroup(parent: HTMLElement, group: RailGroup, tier: VersionRail['tier']): void {
+        const groupEl = parent.createDiv({ cls: 'tm-rail-group' })
+        // The group grows in proportion to how many versions it holds, so a busy
+        // day is visibly busier without any one version becoming unclickable.
+        groupEl.style.setProperty('flex-grow', String(group.segments.length))
+
+        if (tier !== 'minimal') {
+            // Always the short form. A group holding one version is only ~40px
+            // wide, so "This week" and "This month" both truncated to
+            // "THIS…" — two different groups rendering identically. The full
+            // label stays available as a tooltip.
+            groupEl.createDiv({
+                cls: 'tm-rail-group-label',
+                text: group.shortLabel,
+                attr: { title: group.label }
+            })
+        }
+
+        const segmentsEl = groupEl.createDiv({ cls: 'tm-rail-track' })
+
+        for (const segment of group.segments) {
+            const isSelected = segment.id === this.selectedId
+            const classes = ['tm-rail-segment', `is-${segment.source}`]
             if (isSelected) classes.push('is-selected')
 
-            const label = tick.cluster
-                ? `${String(tick.ids.length)} versions around ${formatBackupDate(tick.ts)}`
-                : formatBackupDate(tick.ts)
+            const label = `${formatBackupDate(segment.ts)} — ${formatRelativeTime(segment.ts)}${
+                segment.source === 'git' ? ' (git commit)' : ''
+            }`
 
-            const tickEl = track.createDiv({
+            const segmentEl = segmentsEl.createDiv({
                 cls: classes.join(' '),
                 attr: { 'aria-label': label, 'title': label }
             })
-            tickEl.style.setProperty('left', `${String(tick.position * 100)}%`)
 
-            const icon = tickEl.createSpan({ cls: 'tm-timeline-tick-icon' })
-            setIcon(icon, tick.source === 'git' ? 'git-branch' : 'clock')
-
-            tickEl.addEventListener('click', () => {
-                // A cluster selects its newest member.
-                const target = tick.ids[0]
-                if (target) this.callbacks.onSelect(target)
+            segmentEl.addEventListener('click', () => {
+                this.callbacks.onSelect(segment.id)
             })
         }
     }
 
-    private renderEdgeLabels(layout: TimelineLayout): void {
-        if (!layout.range || layout.tier === 'minimal') return
-
-        const labels = this.container.createDiv({ cls: 'tm-timeline-labels' })
-        labels.createSpan({ cls: 'tm-timeline-label', text: formatBackupDate(layout.range.newest) })
-        labels.createSpan({ cls: 'tm-timeline-label', text: formatBackupDate(layout.range.oldest) })
-    }
-
-    private renderInfo(selected: Snapshot | null): void {
+    private renderDetails(selected: Snapshot | null, rail: VersionRail): void {
         if (!selected) return
 
-        const info = this.container.createDiv({ cls: 'tm-timeline-info' })
-        info.createSpan({ cls: 'tm-timeline-selected', text: formatBackupDate(selected.ts) })
-        info.createSpan({ cls: 'tm-timeline-relative', text: formatRelativeTime(selected.ts) })
+        const details = this.container.createDiv({ cls: 'tm-rail-details' })
 
-        const source = info.createSpan({ cls: 'tm-timeline-source' })
-        const icon = source.createSpan({ cls: 'tm-timeline-source-icon' })
+        const position = this.snapshots.findIndex((snapshot) => snapshot.id === selected.id)
+        if (position !== -1 && rail.total > 1) {
+            details.createSpan({
+                cls: 'tm-rail-position',
+                text: `${String(rail.total - position)} of ${String(rail.total)}`
+            })
+        }
+
+        // The relative time is what people actually read; the absolute date is
+        // the tooltip. Printing both, plus a third "Snapshot (date)" line, was
+        // the same timestamp three times over.
+        details.createSpan({
+            cls: 'tm-rail-when',
+            text: formatRelativeTime(selected.ts),
+            attr: { title: formatBackupDate(selected.ts) }
+        })
+
+        const source = details.createSpan({ cls: 'tm-rail-source' })
+        const icon = source.createSpan({ cls: 'tm-rail-source-icon' })
         setIcon(icon, selected.source === 'git' ? 'git-branch' : 'clock')
-        source.createSpan({ text: formatSnapshotLabel(selected) })
+        source.createSpan({
+            text: selected.source === 'git' ? 'Git commit' : 'File recovery'
+        })
     }
 
-    private step(direction: -1 | 1): void {
+    /** @returns whether the key was consumed. */
+    private handleKey(key: string): boolean {
+        if (key === 'ArrowLeft') return this.step(-1)
+        if (key === 'ArrowRight') return this.step(1)
+        if (key === 'Home') return this.jump('newest')
+        if (key === 'End') return this.jump('oldest')
+        return false
+    }
+
+    private step(direction: -1 | 1): boolean {
         const next = stepSelection(this.snapshots, this.selectedId, direction)
         if (next !== null && next !== this.selectedId) {
             this.callbacks.onSelect(next)
+            return true
         }
+        // Consumed even at the edge, so the pane does not scroll instead.
+        return true
     }
 
-    /**
-     * Re-measures and re-renders. Called from the host view's `onResize`, which
-     * is Obsidian's native hook — no ResizeObserver to own or disconnect.
-     */
+    private jump(edge: 'newest' | 'oldest'): boolean {
+        const target = edgeSelection(this.snapshots, edge)
+        if (target !== null && target !== this.selectedId) {
+            this.callbacks.onSelect(target)
+        }
+        return true
+    }
+
+    /** Re-measures and re-renders; called from the host view's `onResize`. */
     handleResize(): void {
         if (this.snapshots.length === 0) return
         this.render(this.snapshots, this.selectedId)
     }
 }
+
+export { findSegment }

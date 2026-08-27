@@ -16,7 +16,7 @@ export function registerCommands(plugin: TimeMachinePlugin): void {
         // The command name must not contain the plugin name: Obsidian already
         // prefixes commands with it in the palette (AGENTS.md).
         id: 'open-past-view',
-        name: 'Open past view for current note',
+        name: 'Compare versions side by side',
         checkCallback: (checking: boolean) => {
             if (!plugin.settings.pastViewEnabled) return false
             const file = plugin.resolveActiveFile()

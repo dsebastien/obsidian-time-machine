@@ -88,7 +88,7 @@ export class PastView extends ItemView implements HistoryView {
     }
 
     override getIcon(): string {
-        return 'history'
+        return 'columns-2'
     }
 
     getCurrentFile(): TFile | null {
@@ -316,8 +316,16 @@ export class PastView extends ItemView implements HistoryView {
         const btn = parent.createEl('button', {
             cls: 'tm-past-diff-toggle' + (this.state.showDiff ? ' is-active' : ''),
             text: this.state.showDiff ? 'Showing changes' : 'Show changes',
-            attr: { 'aria-pressed': String(this.state.showDiff) }
+            attr: {
+                'aria-pressed': String(this.state.showDiff),
+                'aria-label': this.state.showDiff
+                    ? 'Showing what changed — click to see the version itself'
+                    : 'Show what changed between this version and the note'
+            }
         })
+        const icon = btn.createSpan({ cls: 'tm-past-diff-toggle-icon' })
+        setIcon(icon, 'git-compare')
+        btn.prepend(icon)
         btn.addEventListener('click', () => {
             this.state.showDiff = !this.state.showDiff
             this.persist()

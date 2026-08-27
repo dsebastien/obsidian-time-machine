@@ -77,6 +77,9 @@ export function createRecordingEl(rec: Recording, ownCls = '', clientWidth = 600
         createSpan: (opts?: ElOptions) => child(opts),
         createEl: (_tag: string, opts?: ElOptions) => child(opts),
         addClass: () => {},
+        setText: (value: string) => {
+            rec.texts.push(value)
+        },
         setAttribute: (name: string, value: string) => {
             const existing = rec.attrsByClass.get(ownCls) ?? {}
             existing[name] = value

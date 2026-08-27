@@ -1,11 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 import {
-    computeTimelineLayout,
-    findTickForSnapshot,
+    bucketFor,
+    computeVersionRail,
+    edgeSelection,
+    findSegment,
     resolveTier,
     stepSelection
 } from './timeline-layout'
 import type { Snapshot, SnapshotSource } from '../types/snapshot.intf'
+
+const MINUTE = 60_000
+const DAY = 86_400_000
+
+/** Fixed reference point so bucketing is deterministic. */
+const NOW = new Date('2026-08-27T15:00:00Z').getTime()
 
 function snap(id: string, ts: number, source: SnapshotSource = 'file-recovery'): Snapshot {
     return {
@@ -33,96 +41,113 @@ describe('resolveTier', () => {
         expect(resolveTier(300)).toBe('compact')
         expect(resolveTier(180)).toBe('minimal')
     })
+
+    test('assumes room before the element has been laid out', () => {
+        // Zero width means "not measured yet"; showing the most cramped tier
+        // first would make the rail visibly reflow on open.
+        expect(resolveTier(0)).toBe('full')
+    })
 })
 
-describe('computeTimelineLayout', () => {
-    test('returns an empty layout with no snapshots', () => {
-        const layout = computeTimelineLayout([], 600)
-        expect(layout.ticks).toEqual([])
-        expect(layout.range).toBeNull()
+describe('bucketFor', () => {
+    test('classifies by how long ago the version is', () => {
+        expect(bucketFor(NOW - MINUTE, NOW)).toBe('today')
+        expect(bucketFor(NOW - DAY, NOW)).toBe('yesterday')
+        expect(bucketFor(NOW - 4 * DAY, NOW)).toBe('week')
+        expect(bucketFor(NOW - 20 * DAY, NOW)).toBe('month')
+        expect(bucketFor(NOW - 200 * DAY, NOW)).toBe('older')
+    })
+})
+
+describe('computeVersionRail', () => {
+    test('returns nothing for an empty history', () => {
+        const rail = computeVersionRail([], 600, NOW)
+        expect(rail.groups).toEqual([])
+        expect(rail.total).toBe(0)
     })
 
-    test('places the newest at 0 and the oldest at 1', () => {
-        const snapshots = [snap('a', 3000), snap('b', 2000), snap('c', 1000)]
-        const layout = computeTimelineLayout(snapshots, 600)
-
-        expect(layout.ticks[0]?.position).toBe(0)
-        expect(layout.ticks[layout.ticks.length - 1]?.position).toBe(1)
-        expect(layout.range).toEqual({ newest: 3000, oldest: 1000 })
-    })
-
-    test('positions proportionally to time, not evenly by index', () => {
-        // b sits very close to a in time, far from c.
-        const snapshots = [snap('a', 10_000), snap('b', 9_900), snap('c', 0)]
-        const layout = computeTimelineLayout(snapshots, 10_000)
-
-        const b = findTickForSnapshot(layout, 'b')
-        expect(b?.position).toBeCloseTo(0.01, 5)
-        // Even spacing would have put it at 0.5 — proving placement is time-based.
-        expect(b?.position).not.toBeCloseTo(0.5, 1)
-    })
-
-    test('falls back to even spacing when every timestamp is identical', () => {
-        const snapshots = [snap('a', 5000), snap('b', 5000), snap('c', 5000)]
-        const layout = computeTimelineLayout(snapshots, 600)
-
-        // No NaN, no divide-by-zero.
-        for (const tick of layout.ticks) {
-            expect(Number.isFinite(tick.position)).toBe(true)
-        }
-        expect(layout.ticks.map((t) => t.position)).toEqual([0, 0.5, 1])
-    })
-
-    test('handles a single snapshot without dividing by zero', () => {
-        const layout = computeTimelineLayout([snap('a', 5000)], 600)
-        expect(layout.ticks).toHaveLength(1)
-        expect(layout.ticks[0]?.position).toBe(0)
-        expect(layout.range).toEqual({ newest: 5000, oldest: 5000 })
-    })
-
-    test('merges near-simultaneous snapshots into a cluster tick', () => {
-        // Three saves within a second, then one much older.
-        const snapshots = [snap('a', 100_000), snap('b', 99_990), snap('c', 99_980), snap('d', 0)]
-        const layout = computeTimelineLayout(snapshots, 400)
-
-        expect(layout.ticks).toHaveLength(2)
-        expect(layout.ticks[0]?.cluster).toBe(true)
-        expect(layout.ticks[0]?.ids).toEqual(['a', 'b', 'c'])
-        expect(layout.ticks[1]?.cluster).toBe(false)
-    })
-
-    test('marks a cluster spanning both sources as mixed', () => {
-        const snapshots = [
-            snap('a', 100_000, 'git'),
-            snap('b', 99_990, 'file-recovery'),
-            snap('d', 0)
+    test('keeps every version — none are merged away', () => {
+        // The previous proportional layout collapsed near-simultaneous versions
+        // into one tick, which made them unreachable.
+        const bursty = [
+            snap('a', NOW - MINUTE),
+            snap('b', NOW - MINUTE - 1000),
+            snap('c', NOW - MINUTE - 2000),
+            snap('d', NOW - 400 * DAY)
         ]
-        const layout = computeTimelineLayout(snapshots, 400)
-        expect(layout.ticks[0]?.source).toBe('mixed')
+        const rail = computeVersionRail(bursty, 600, NOW)
+
+        const ids = rail.groups.flatMap((g) => g.segments.map((s) => s.id))
+        expect(ids).toEqual(['a', 'b', 'c', 'd'])
+        expect(rail.total).toBe(4)
     })
 
-    test('keeps a single-source cluster on its own source', () => {
-        const snapshots = [snap('a', 100_000, 'git'), snap('b', 99_990, 'git'), snap('d', 0)]
-        const layout = computeTimelineLayout(snapshots, 400)
-        expect(layout.ticks[0]?.source).toBe('git')
+    test('a burst and a year-old commit both stay reachable at any width', () => {
+        const snapshots = [
+            snap('a', NOW - MINUTE),
+            snap('b', NOW - 2 * MINUTE),
+            snap('c', NOW - 400 * DAY)
+        ]
+        for (const width of [120, 300, 1200]) {
+            const rail = computeVersionRail(snapshots, width, NOW)
+            expect(rail.groups.flatMap((g) => g.segments)).toHaveLength(3)
+        }
     })
 
-    test('does not cluster when width is unknown', () => {
-        const snapshots = [snap('a', 100_000), snap('b', 99_990), snap('c', 0)]
-        const layout = computeTimelineLayout(snapshots, 0)
-        expect(layout.ticks).toHaveLength(3)
+    test('groups consecutive versions from the same bucket together', () => {
+        const snapshots = [
+            snap('a', NOW - MINUTE),
+            snap('b', NOW - 2 * MINUTE),
+            snap('c', NOW - 4 * DAY),
+            snap('d', NOW - 200 * DAY)
+        ]
+        const rail = computeVersionRail(snapshots, 600, NOW)
+
+        expect(rail.groups.map((g) => g.key)).toEqual(['today', 'week', 'older'])
+        expect(rail.groups[0]?.segments.map((s) => s.id)).toEqual(['a', 'b'])
     })
 
-    test('a wider track clusters less than a narrow one', () => {
-        const snapshots = [snap('a', 100_000), snap('b', 99_000), snap('c', 0)]
-        expect(computeTimelineLayout(snapshots, 200).ticks.length).toBeLessThanOrEqual(
-            computeTimelineLayout(snapshots, 4000).ticks.length
-        )
+    test('labels every group', () => {
+        const rail = computeVersionRail([snap('a', NOW - MINUTE)], 600, NOW)
+        expect(rail.groups[0]?.label).toBe('Today')
+        expect(rail.groups[0]?.shortLabel).toBeTruthy()
+    })
+
+    test('records each version position for announcements and stepping', () => {
+        const snapshots = [snap('a', NOW - MINUTE), snap('b', NOW - 200 * DAY)]
+        const rail = computeVersionRail(snapshots, 600, NOW)
+
+        expect(rail.groups[0]?.segments[0]?.index).toBe(0)
+        expect(rail.groups[1]?.segments[0]?.index).toBe(1)
+    })
+
+    test('carries the source through so git and file-recovery can differ visually', () => {
+        const rail = computeVersionRail([snap('a', NOW - MINUTE, 'git')], 600, NOW)
+        expect(rail.groups[0]?.segments[0]?.source).toBe('git')
+    })
+
+    test('handles identical timestamps without collapsing them', () => {
+        const same = [snap('a', NOW - MINUTE), snap('b', NOW - MINUTE), snap('c', NOW - MINUTE)]
+        const rail = computeVersionRail(same, 600, NOW)
+        expect(rail.groups[0]?.segments).toHaveLength(3)
+    })
+})
+
+describe('findSegment', () => {
+    const rail = computeVersionRail([snap('a', NOW - MINUTE), snap('b', NOW - 200 * DAY)], 600, NOW)
+
+    test('finds a version in any group', () => {
+        expect(findSegment(rail, 'b')?.id).toBe('b')
+    })
+
+    test('returns null for an unknown or absent id', () => {
+        expect(findSegment(rail, 'nope')).toBeNull()
+        expect(findSegment(rail, null)).toBeNull()
     })
 })
 
 describe('stepSelection', () => {
-    const snapshots = [snap('a', 3000), snap('b', 2000), snap('c', 1000)]
+    const snapshots = [snap('a', NOW - MINUTE), snap('b', NOW - 2 * MINUTE), snap('c', NOW - DAY)]
 
     test('steps towards older', () => {
         expect(stepSelection(snapshots, 'a', 1)).toBe('b')
@@ -132,25 +157,9 @@ describe('stepSelection', () => {
         expect(stepSelection(snapshots, 'b', -1)).toBe('a')
     })
 
-    test('stops at the newest edge', () => {
+    test('stops at both edges', () => {
         expect(stepSelection(snapshots, 'a', -1)).toBe('a')
-    })
-
-    test('stops at the oldest edge', () => {
         expect(stepSelection(snapshots, 'c', 1)).toBe('c')
-    })
-
-    test('visits every snapshot even when they cluster into one tick', () => {
-        // The burst only collapses when the overall span dwarfs it, so `d`
-        // stretches the timeline and forces a, b and c onto a single tick.
-        const bursty = [snap('a', 100_000), snap('b', 99_990), snap('c', 99_980), snap('d', 0)]
-        const clustered = computeTimelineLayout(bursty, 400).ticks
-        expect(clustered).toHaveLength(2)
-        expect(clustered[0]?.ids).toEqual(['a', 'b', 'c'])
-
-        // Stepping walks snapshots, not ticks, so nothing is unreachable.
-        expect(stepSelection(bursty, 'a', 1)).toBe('b')
-        expect(stepSelection(bursty, 'b', 1)).toBe('c')
     })
 
     test('selects the newest when nothing is selected', () => {
@@ -163,5 +172,18 @@ describe('stepSelection', () => {
 
     test('returns null with no snapshots', () => {
         expect(stepSelection([], 'a', 1)).toBeNull()
+    })
+})
+
+describe('edgeSelection', () => {
+    const snapshots = [snap('a', NOW - MINUTE), snap('b', NOW - 2 * MINUTE), snap('c', NOW - DAY)]
+
+    test('jumps to the newest and the oldest', () => {
+        expect(edgeSelection(snapshots, 'newest')).toBe('a')
+        expect(edgeSelection(snapshots, 'oldest')).toBe('c')
+    })
+
+    test('returns null with no snapshots', () => {
+        expect(edgeSelection([], 'newest')).toBeNull()
     })
 })
