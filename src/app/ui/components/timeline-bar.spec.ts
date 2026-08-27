@@ -189,4 +189,17 @@ describe('TimelineBarComponent', () => {
 
         expect(rec.focused).toContain('tm-rail')
     })
+
+    test('renders every version even for a very large history', () => {
+        // 300 file-recovery snapshots is an ordinary busy note. Segments hit
+        // their minimum width and the rail scrolls; nothing is dropped, because
+        // a version that is not rendered cannot be selected.
+        const { bar, rec } = createBar()
+        const many = Array.from({ length: 300 }, (_, i) => snap(`s-${String(i)}`, now - i * MINUTE))
+
+        bar.render(many, 's-150')
+
+        expect(rec.classes.filter((c) => c.startsWith('tm-rail-segment'))).toHaveLength(300)
+        expect(rec.classes.filter((c) => c.includes('is-selected'))).toHaveLength(1)
+    })
 })

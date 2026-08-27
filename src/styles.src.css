@@ -536,6 +536,32 @@
     gap: 0.75rem;
     min-width: 0;
     border-radius: var(--radius-s);
+    /* A note can hold hundreds of file-recovery snapshots. Rather than shrink
+       segments below a clickable size — which silently put most versions out of
+       reach — the rail scrolls and keeps the selection in view. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scroll-behavior: smooth;
+}
+
+.tm-rail::-webkit-scrollbar {
+    height: 6px;
+}
+
+.tm-rail::-webkit-scrollbar-thumb {
+    background-color: var(--background-modifier-border);
+    border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tm-rail {
+        scroll-behavior: auto;
+    }
+
+    .tm-rail-segment {
+        transition: none;
+    }
 }
 
 .tm-rail:focus-visible {
@@ -544,7 +570,7 @@
 }
 
 .tm-rail-group {
-    @apply flex flex-col;
+    @apply flex flex-col shrink-0;
     gap: 0.25rem;
     min-width: 0;
     /* flex-grow is set inline, in proportion to how many versions the group
@@ -575,7 +601,10 @@
    the timestamps are distributed. */
 .tm-rail-segment {
     @apply flex-1 cursor-pointer;
-    min-width: 4px;
+    /* Small, but the rail scrolls rather than going below this, so every
+       version keeps a real hit target. Arrow keys and the nav buttons are the
+       precise path for dense histories. */
+    min-width: 6px;
     height: 20px;
     border-radius: 2px;
     background-color: var(--background-modifier-border);

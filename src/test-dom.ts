@@ -25,6 +25,8 @@ export interface Recording {
     attrsByClass: Map<string, Record<string, string>>
     /** Class strings of elements that had `focus()` called on them. */
     focused: string[]
+    /** Callbacks handed to `requestAnimationFrame`, uninvoked. */
+    animationFrames: (() => void)[]
     /** The created elements themselves, keyed by class string. */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     focusables: Map<string, any>
@@ -39,6 +41,7 @@ export function createRecording(): Recording {
         stylesByClass: new Map(),
         attrsByClass: new Map(),
         focused: [],
+        animationFrames: [],
         focusables: new Map()
     }
 }
@@ -69,6 +72,25 @@ export function createRecordingEl(rec: Recording, ownCls = '', clientWidth = 600
         tabIndex: 0,
         textContent: '',
         ownerDocument: { activeElement: null as unknown },
+        // Obsidian augments elements with `win`. Callbacks are captured rather
+        // than run, so layout-dependent code stays out of these tests.
+        win: {
+            requestAnimationFrame: (cb: () => void) => {
+                rec.animationFrames.push(cb)
+                return 0
+            }
+        },
+        getBoundingClientRect: () => ({
+            left: 0,
+            right: 0,
+            width: 0,
+            top: 0,
+            bottom: 0,
+            height: 0
+        }),
+        scrollLeft: 0,
+        scrollWidth: 0,
+        clientHeight: 0,
         focus: () => {
             rec.focused.push(ownCls)
         },

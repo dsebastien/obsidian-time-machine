@@ -30,6 +30,8 @@ export class TimelineBarComponent {
     private snapshots: Snapshot[] = []
     private selectedId: string | null = null
     private railEl: HTMLElement | null = null
+    /** The selected segment's element, so it can be scrolled into view. */
+    private selectedEl: HTMLElement | null = null
     /**
      * Whether the rail had focus when it was last replaced. Every selection
      * re-renders, destroying the focused element — without restoring focus,
@@ -54,6 +56,7 @@ export class TimelineBarComponent {
         this.snapshots = snapshots
         this.selectedId = selectedId
         this.railEl = null
+        this.selectedEl = null
         this.container.empty()
 
         if (snapshots.length === 0) return
@@ -97,6 +100,37 @@ export class TimelineBarComponent {
 
         // Keep the keyboard on the rail across the re-render each selection triggers.
         if (this.railHadFocus) rail_.focus()
+
+        // Deferred a frame: the rail's own width is not settled at the moment
+        // its children are created, so measuring here reports no overflow and
+        // the reveal silently does nothing.
+        this.container.win.requestAnimationFrame(() => {
+            this.revealSelected()
+        })
+    }
+
+    /**
+     * Scrolls the selected version into view when the rail overflows.
+     *
+     * A note with hundreds of file-recovery snapshots cannot fit one usable
+     * segment each, so the rail scrolls rather than shrinking segments below a
+     * clickable size — but then stepping with the arrow keys would walk the
+     * selection off-screen without this.
+     */
+    private revealSelected(): void {
+        const rail = this.railEl
+        const selected = this.selectedEl
+        if (!rail || !selected) return
+        if (rail.scrollWidth <= rail.clientWidth) return
+
+        const railBox = rail.getBoundingClientRect()
+        const box = selected.getBoundingClientRect()
+        // Only scroll when it is actually out of view, so a user who has
+        // scrolled to look around is not yanked back on every re-render.
+        if (box.left >= railBox.left && box.right <= railBox.right) return
+
+        const offset = box.left - railBox.left + rail.scrollLeft
+        rail.scrollLeft = offset - rail.clientWidth / 2 + box.width / 2
     }
 
     private renderNavButton(
@@ -167,6 +201,7 @@ export class TimelineBarComponent {
                 cls: classes.join(' '),
                 attr: { 'aria-label': label, 'title': label }
             })
+            if (isSelected) this.selectedEl = segmentEl
 
             segmentEl.addEventListener('click', () => {
                 this.callbacks.onSelect(segment.id)
