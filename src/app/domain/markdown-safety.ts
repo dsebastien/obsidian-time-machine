@@ -44,20 +44,39 @@ export interface NeutraliseResult {
     neutralised: string[]
 }
 
-/** A fence opener: optional indent, 3+ backticks or tildes, then an info string. */
-const FENCE_RE = /^(\s{0,3})(`{3,}|~{3,})(.*)$/
+/**
+ * A fence opener.
+ *
+ * The prefix is deliberately permissive — `[ \t>]*` — rather than CommonMark's
+ * "up to three spaces". A fence nested in a list item or a blockquote is
+ * legitimately indented further, or prefixed with `>`, and those must not slip
+ * through: `> ```dataviewjs` is a perfectly ordinary block that Obsidian
+ * renders, and therefore executes.
+ */
+const FENCE_RE = /^([ \t>]*)(`{3,}|~{3,})(.*)$/
+
+/** Raw HTML elements that can execute or load remote content. */
+const DANGEROUS_HTML_RE = /<(\/?)(script|iframe|object|embed)\b/gi
+
+function languageOf(info: string): string {
+    return info.trim().split(/\s+/)[0] ?? ''
+}
+
+function isExecutable(language: string): boolean {
+    return language !== '' && EXECUTABLE_LANGUAGES.has(language.toLowerCase())
+}
 
 /**
  * Relabels executable fenced code blocks so they render as inert source, and
- * escapes raw `<script>` tags.
+ * escapes raw HTML that can execute or fetch.
  *
- * Fence scanning follows CommonMark closely enough for real notes: a block is
- * closed by a fence of the same character that is at least as long as the
- * opener, and an opener's info string may not contain a backtick when the fence
- * is made of backticks.
+ * Line endings are normalised to LF first. JavaScript's `.` does not match
+ * `\r` (it is a line terminator), so a CRLF note would otherwise leave `\r`
+ * stranded at the end of every line and no fence would ever match — every
+ * executable block in a CRLF note would have rendered, and run.
  */
 export function neutraliseExecutableBlocks(markdown: string): NeutraliseResult {
-    const lines = markdown.split('\n')
+    const lines = markdown.split(/\r?\n/)
     const neutralised: string[] = []
 
     let openFenceChar: string | null = null
@@ -68,25 +87,32 @@ export function neutraliseExecutableBlocks(markdown: string): NeutraliseResult {
         if (line === undefined) continue
 
         const match = FENCE_RE.exec(line)
+        if (!match) continue
+
+        const [, prefix = '', fence = '', info = ''] = match
+        const char = fence[0]
+        if (char === undefined) continue
 
         if (openFenceChar !== null) {
-            // Inside a block: only a closing fence of the same char and >= length ends it.
-            if (match) {
-                const [, , fence = '', info = ''] = match
-                const char = fence[0]
-                if (char === openFenceChar && fence.length >= openFenceLength && !info.trim()) {
-                    openFenceChar = null
-                    openFenceLength = 0
-                }
+            // Inside a block: a fence of the same character and at least the
+            // opener's length, with no info string, closes it.
+            if (char === openFenceChar && fence.length >= openFenceLength && !info.trim()) {
+                openFenceChar = null
+                openFenceLength = 0
+                continue
+            }
+
+            // Still inside. An executable fence here is normally just text —
+            // but only when the enclosing fence is strictly longer, which is
+            // how genuine nesting is written (```` wrapping ```). If it is not
+            // longer, we are probably not really inside a block at all (a
+            // mis-detected opener), and the safe reading is to neutralise.
+            if (isExecutable(languageOf(info)) && fence.length >= openFenceLength) {
+                neutralised.push(languageOf(info))
+                lines[i] = `${prefix}${fence}${INERT_LANGUAGE}`
             }
             continue
         }
-
-        if (!match) continue
-
-        const [, indent = '', fence = '', info = ''] = match
-        const char = fence[0]
-        if (char === undefined) continue
 
         // A backtick fence's info string cannot contain a backtick (CommonMark).
         if (char === '`' && info.includes('`')) continue
@@ -94,22 +120,27 @@ export function neutraliseExecutableBlocks(markdown: string): NeutraliseResult {
         openFenceChar = char
         openFenceLength = fence.length
 
-        const language = info.trim().split(/\s+/)[0] ?? ''
-        if (language && EXECUTABLE_LANGUAGES.has(language.toLowerCase())) {
+        const language = languageOf(info)
+        if (isExecutable(language)) {
             neutralised.push(language)
-            lines[i] = `${indent}${fence}${INERT_LANGUAGE}`
+            lines[i] = `${prefix}${fence}${INERT_LANGUAGE}`
         }
     }
 
     let result = lines.join('\n')
 
     // Raw HTML survives Obsidian's renderer in some contexts; never let a
-    // historical <script> run. Escaping the opening angle bracket is enough to
-    // turn it into visible text.
-    const scriptRe = /<(\/?)(script)\b/gi
-    if (scriptRe.test(result)) {
-        neutralised.push('script')
-        result = result.replace(scriptRe, '&lt;$1$2')
+    // historical <script> run or an <iframe> phone home. Escaping the opening
+    // angle bracket turns it into visible text.
+    DANGEROUS_HTML_RE.lastIndex = 0
+    if (DANGEROUS_HTML_RE.test(result)) {
+        DANGEROUS_HTML_RE.lastIndex = 0
+        const seen = new Set<string>()
+        result = result.replace(DANGEROUS_HTML_RE, (_m, slash: string, tag: string) => {
+            seen.add(tag.toLowerCase())
+            return `&lt;${slash}${tag}`
+        })
+        for (const tag of seen) neutralised.push(tag)
     }
 
     return { markdown: result, neutralised }

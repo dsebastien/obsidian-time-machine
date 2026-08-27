@@ -224,4 +224,62 @@ describe('SnapshotSession', () => {
             expect(await session.computeDiff()).toBeNull()
         })
     })
+
+    describe('generation isolation', () => {
+        test('computing a diff does not cancel an in-flight snapshot load', async () => {
+            // Scrubbing the timeline computes diffs continuously. If diffing
+            // shared the load counter, the poll's re-fetch landing mid-scrub
+            // would be discarded and the timeline would stop updating.
+            const { session } = createSession('live')
+
+            // First load, so a selection exists and computeDiff does real work.
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+            await session.loadFor(file)
+            expect(session.snapshots).toHaveLength(2)
+
+            // Now a poll re-fetches slowly...
+            let release: (value: Snapshot[]) => void = () => {}
+            spy.mockReturnValue(
+                new Promise<Snapshot[]>((r) => {
+                    release = r
+                })
+            )
+            const reload = session.loadFor(file)
+
+            // ...while the user scrubs, which computes a diff.
+            await session.computeDiff()
+
+            release([snap('a', 3000, 'v3'), snap('b', 2000, 'v2'), snap('c', 1000, 'v1')])
+
+            expect(await reload).toBe('updated')
+            expect(session.snapshots).toHaveLength(3)
+        })
+
+        test('a newer diff still supersedes an older one', async () => {
+            const { session, read } = createSession('live')
+            spy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+                snap('a', 3000, 'v3'),
+                snap('b', 2000, 'v2')
+            ])
+            await session.loadFor(file)
+
+            let releaseRead: (value: string) => void = () => {}
+            read.mockReturnValueOnce(
+                new Promise<string>((r) => {
+                    releaseRead = r
+                })
+            )
+
+            session.select('b')
+            const first = session.computeDiff()
+            const second = await session.computeDiff()
+            releaseRead('live')
+
+            expect(await first).toBeNull()
+            expect(second).not.toBeNull()
+        })
+    })
 })

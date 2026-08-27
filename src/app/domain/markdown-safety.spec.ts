@@ -99,4 +99,72 @@ describe('neutraliseExecutableBlocks', () => {
     test('returns empty content unchanged', () => {
         expect(neutraliseExecutableBlocks('')).toEqual({ markdown: '', neutralised: [] })
     })
+
+    describe('bypass regressions', () => {
+        // Each of these executed in an earlier version of this function.
+
+        test('neutralises a block inside a blockquote', () => {
+            const { markdown, neutralised } = neutraliseExecutableBlocks(
+                '> ```dataviewjs\n> dv.paragraph("x")\n> ```'
+            )
+            expect(neutralised).toEqual(['dataviewjs'])
+            expect(markdown).toContain('> ```text')
+        })
+
+        test('neutralises a block indented inside a list item', () => {
+            const { neutralised } = neutraliseExecutableBlocks(
+                '- item\n\n      ```dataviewjs\n      dv.paragraph("x")\n      ```'
+            )
+            expect(neutralised).toEqual(['dataviewjs'])
+        })
+
+        test('preserves the list indentation when relabelling', () => {
+            const { markdown } = neutraliseExecutableBlocks(
+                '      ```dataviewjs\n      x\n      ```'
+            )
+            expect(markdown.startsWith('      ```text')).toBe(true)
+        })
+
+        test('neutralises a block in a CRLF note', () => {
+            // JavaScript's `.` does not match \r, so a CRLF note used to leave
+            // every line ending stranded and no fence ever matched.
+            const { markdown, neutralised } = neutraliseExecutableBlocks(
+                '```dataviewjs\r\ndv.paragraph("x")\r\n```'
+            )
+            expect(neutralised).toEqual(['dataviewjs'])
+            expect(markdown).toContain('```text')
+        })
+
+        test('neutralises a nested blockquote fence', () => {
+            const { neutralised } = neutraliseExecutableBlocks('>> ```dataviewjs\n>> x\n>> ```')
+            expect(neutralised).toEqual(['dataviewjs'])
+        })
+
+        test('neutralises an executable fence that follows a same-length fence', () => {
+            // A same-length "outer" fence cannot legitimately nest another, so
+            // being inside one is not a reason to trust the inner block.
+            const input = '```\nplain\n```dataviewjs\ndv.paragraph("x")\n```'
+            const { neutralised } = neutraliseExecutableBlocks(input)
+            expect(neutralised).toContain('dataviewjs')
+        })
+
+        test('escapes iframe and object as well as script', () => {
+            const { markdown, neutralised } = neutraliseExecutableBlocks(
+                '<iframe src="https://example.com"></iframe><object data="x"></object>'
+            )
+            expect(markdown).not.toContain('<iframe')
+            expect(markdown).not.toContain('<object')
+            expect(neutralised).toContain('iframe')
+            expect(neutralised).toContain('object')
+        })
+
+        test('still leaves a genuinely nested example alone', () => {
+            // Documentation notes legitimately show a dataviewjs block inside a
+            // longer markdown fence; that must keep its language label.
+            const input = '````markdown\n```dataviewjs\nexample\n```\n````'
+            const { markdown, neutralised } = neutraliseExecutableBlocks(input)
+            expect(markdown).toBe(input)
+            expect(neutralised).toEqual([])
+        })
+    })
 })

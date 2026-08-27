@@ -33,11 +33,20 @@ export class SnapshotSession {
     private readonly getSettings: () => PluginSettings
 
     /**
-     * Monotonic request generation. Every async operation captures it on entry
-     * and reports `superseded` if a newer one started meanwhile, so a slow git
-     * fetch can never overwrite fresher results.
+     * Monotonic generation for snapshot *loading*. `loadFor` and
+     * `refreshContent` capture it on entry and report `superseded` if a newer
+     * load started meanwhile, so a slow git fetch can never overwrite fresher
+     * results.
      */
-    private generation = 0
+    private dataGeneration = 0
+
+    /**
+     * Separate generation for diff computation. Diffing must NOT share the load
+     * counter: scrubbing the timeline computes diffs continuously, and a shared
+     * counter would make every scrub cancel an in-flight snapshot fetch, so a
+     * poll landing during interaction would be silently thrown away.
+     */
+    private diffGeneration = 0
 
     file: TFile | null = null
     allSnapshots: Snapshot[] = []
@@ -101,7 +110,7 @@ export class SnapshotSession {
 
     /** Loads snapshots for a file. Returns `superseded` if a newer load started. */
     async loadFor(file: TFile | null): Promise<SessionOutcome> {
-        const generation = ++this.generation
+        const generation = ++this.dataGeneration
 
         if (!file) {
             this.file = null
@@ -123,7 +132,7 @@ export class SnapshotSession {
             log('Failed to fetch snapshots', 'error', error)
             fetched = []
         }
-        if (generation !== this.generation) return 'superseded'
+        if (generation !== this.dataGeneration) return 'superseded'
 
         this.allSnapshots = fetched
 
@@ -134,7 +143,7 @@ export class SnapshotSession {
         }
 
         const currentContent = await this.app.vault.read(file)
-        if (generation !== this.generation) return 'superseded'
+        if (generation !== this.dataGeneration) return 'superseded'
 
         this.snapshots = fetched.filter((snapshot) => snapshot.data !== currentContent)
         this.reconcileSelection()
@@ -148,10 +157,10 @@ export class SnapshotSession {
      */
     async refreshContent(): Promise<SessionOutcome> {
         if (!this.file) return 'unchanged'
-        const generation = ++this.generation
+        const generation = ++this.dataGeneration
 
         const currentContent = await this.app.vault.read(this.file)
-        if (generation !== this.generation) return 'superseded'
+        if (generation !== this.dataGeneration) return 'superseded'
 
         const previous = this.snapshots
         this.snapshots = this.allSnapshots.filter((snapshot) => snapshot.data !== currentContent)
@@ -204,12 +213,6 @@ export class SnapshotSession {
         this.selectedTs = newest?.ts ?? null
     }
 
-    /** Reads the live file content, or null when there is no file. */
-    async readCurrentContent(): Promise<string | null> {
-        if (!this.file) return null
-        return this.app.vault.read(this.file)
-    }
-
     /**
      * Computes the diff for the current selection under the active comparison
      * mode. Records the content it diffed against on `diffBaseContent`.
@@ -219,9 +222,9 @@ export class SnapshotSession {
         const snapshot = this.selectedSnapshot
         if (index === null || !snapshot || !this.file) return null
 
-        const generation = ++this.generation
+        const generation = ++this.diffGeneration
         const currentContent = await this.app.vault.read(this.file)
-        if (generation !== this.generation) return null
+        if (generation !== this.diffGeneration) return null
 
         const mode = this.getSettings().diffComparisonMode
 
