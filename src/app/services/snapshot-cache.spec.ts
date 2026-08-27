@@ -5,6 +5,7 @@ import { SnapshotService } from './snapshot.service'
 import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 import type { Snapshot } from '../types/snapshot.intf'
 
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 let spy: ReturnType<typeof spyOn> | null = null
 afterEach(() => {
     spy?.mockRestore()
@@ -81,7 +82,7 @@ describe('SnapshotCache', () => {
         const cache = new SnapshotCache()
         spy = spyOn(SnapshotService, 'getSnapshots').mockRejectedValueOnce(new Error('git broke'))
 
-        await expect(cache.get(app, 'note.md', DEFAULT_SETTINGS)).rejects.toThrow('git broke')
+        expect(cache.get(app, 'note.md', DEFAULT_SETTINGS)).rejects.toThrow('git broke')
 
         spy.mockResolvedValue([snap('fr-2')])
         expect(await cache.get(app, 'note.md', DEFAULT_SETTINGS)).toHaveLength(1)

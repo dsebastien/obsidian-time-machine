@@ -31,3 +31,17 @@ Time Machine has the following settings, accessible via **Settings -> Community 
 When enabled, Time Machine automatically detects whether the vault is inside a git repository and, for each file, fetches its commit history. The git commits are merged with File Recovery snapshots into a single chronological timeline.
 
 The plugin never creates commits, pushes, pulls, or modifies the git repository in any way. It is strictly read-only.
+
+## Past view
+
+| Setting                      | Default | What it does                                                              |
+| ---------------------------- | ------- | ------------------------------------------------------------------------- |
+| **Enable past view**         | On      | Shows the past view's command, ribbon icon and menu items                 |
+| **Open showing changes**     | Off     | Opens the past view on the diff rather than the old version               |
+| **Run code in old versions** | Off     | Lets `dataviewjs` and Dataview blocks in an old version run when rendered |
+
+### Run code in old versions
+
+Leave this off unless you have a specific reason.
+
+Rendering an old version normally executes any code it contains -- against your vault as it is **today**, and including blocks you have since deleted from the note. While the setting is off, those blocks are shown as plain source instead, and the pane tells you how many it skipped.

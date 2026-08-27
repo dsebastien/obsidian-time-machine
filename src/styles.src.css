@@ -678,3 +678,11 @@
     @apply select-text;
     padding: 0;
 }
+
+.tm-header-row {
+    @apply flex items-center gap-2;
+}
+
+.tm-header-row .tm-header-file {
+    @apply flex-1 truncate;
+}

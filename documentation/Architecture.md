@@ -19,11 +19,18 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 - **SnapshotService**: Orchestrator that fetches from both sources (file-recovery + git), converts to unified `Snapshot` type, and merges chronologically.
 - **DiffService**: Wraps `diff` (jsdiff) `structuredPatch` for computing diffs
 - **RestoreService**: Full version restore via `vault.modify()` + selective hunk restoration via line manipulation
+- **SnapshotCache**: coalesces concurrent snapshot fetches per (path, git settings). Several open views on one note would otherwise each run one `git show` per commit.
+- **NoteExportService**: writes a historical version out as a new note beside the original. The only place the plugin creates a file.
+- **past-view-launcher.ts**: `openPastView` — resolves the root leaf showing the file, splits before it, reuses an existing past view (detected via `leaf.getViewState()`, since deferred leaves expose a `DeferredView`).
 
 ### Domain
 
 - **backup.ts**: Sorting, date formatting (date-fns), relative time
 - **snapshot.ts**: Factory functions (`fileRecoveryToSnapshot`, `gitCommitToSnapshot`), merge/sort utilities, label formatting
+- **snapshot-session.ts**: `SnapshotSession` — the state behind a history view (file, snapshots, selection, diff). Shared by both views. Selection is by snapshot **id**, not index. Every async operation is generation-guarded so a slow git fetch cannot overwrite fresher results.
+- **timeline-layout.ts**: pure layout maths for the timeline (proportional positioning, clustering, tier selection, keyboard stepping). No DOM, so it is directly unit-testable.
+- **markdown-safety.ts**: `neutraliseExecutableBlocks` — relabels executable fenced blocks to `text` before a historical version reaches `MarkdownRenderer`, so old `dataviewjs`/`dataview` blocks display as source instead of executing.
+- **past-view-state.ts**: `PastViewState` and its normaliser for untrusted workspace-layout state.
 
 ### Types
 
@@ -34,20 +41,26 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 
 ### UI
 
-- **TimeMachineView**: ItemView in right sidebar, orchestrates components. Uses `SnapshotService` to fetch unified snapshots.
-- **TimelineSliderComponent**: Range input slider (left=newest, right=oldest) with filled track, edge date labels, inline selected date display, source indicator (git-branch/clock icon), auto-select newest; hidden when only one snapshot
-- **DiffViewerComponent**: Colored diff hunks with per-hunk restore buttons
+Two views, one shared core. Both implement `HistoryView` so the plugin routes to them by capability rather than by concrete class.
+
+- **TimeMachineView**: ItemView in the right sidebar. Compact surface; always follows the active file.
+- **PastView**: main-area ItemView showing a note as it was at a chosen version. Opened in a native split _before_ the leaf holding the live editor (visually left in LTR), so the right pane stays the user's real, editable note. Opens as a tab on mobile or in a narrow workspace. Bound to its file by default.
+- **TimelineBarComponent**: controlled timeline; ticks positioned proportionally to timestamp, clustering for dense histories, keyboard stepping, responsive tiers via `onResize`. Renders the selection it is given and never auto-selects — the session owns selection. Replaces the old `TimelineSliderComponent`.
+- **DiffViewerComponent**: diff body and per-hunk restore only. The comparison control and full-restore button belong to the owning view's header.
+- **renderComparisonModeControl / renderRestoreFullButton**: shared header controls.
 - **EmptyState**: Contextual empty messages
-- **ConfirmModal**: Confirmation for full restore only
+- **ConfirmModal** (`components/confirm-modal.ts`): shared confirmation; settles exactly once, so an Escape dismissal resolves as cancel.
 
 ## Data Flow
 
-1. File-open event → `updateForFile(file)`
-2. Fetch snapshots from all sources via `SnapshotService.getSnapshots()` (file-recovery + git if enabled)
-3. Filter out snapshots identical to current file content
-4. User scrubs timeline slider → compute diff (current vs selected snapshot) via DiffService
-5. Render diff in DiffViewerComponent with source-aware labels
-6. User clicks restore → RestoreService modifies file via vault API (same for both sources)
+1. File-open event → plugin routes to every view whose `followsActiveFile()` is true → `updateForFile(file)`
+2. `SnapshotSession` fetches via `SnapshotCache` (coalescing) → `SnapshotService.getSnapshots()` (file-recovery + git if enabled)
+3. Filter out snapshots identical to current file content; reconcile the selection (same id, else nearest surviving timestamp, else newest)
+4. User scrubs the timeline → session computes the diff for the selection under the active comparison mode
+5. Sidebar renders the diff; the past view renders either the diff or the neutralised markdown of the old version
+6. User clicks restore → RestoreService modifies the file via the vault API (same for both sources)
+
+Comparison-mode changes go through `plugin.setComparisonMode`, which saves the setting and broadcasts to every open history view.
 
 ## CSS
 

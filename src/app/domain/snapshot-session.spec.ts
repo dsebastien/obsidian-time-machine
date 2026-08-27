@@ -6,6 +6,7 @@ import { SnapshotService } from '../services/snapshot.service'
 import { DEFAULT_SETTINGS, type PluginSettings } from '../types/plugin-settings.intf'
 import type { Snapshot } from '../types/snapshot.intf'
 
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 let spy: ReturnType<typeof spyOn> | null = null
 afterEach(() => {
     spy?.mockRestore()

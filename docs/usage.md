@@ -11,6 +11,27 @@ Open the command palette (`Ctrl/Cmd + P`) and run **Time Machine: Open view**. T
 
 The panel automatically displays snapshots for whichever file is currently active. When you switch to a different file, the view updates automatically.
 
+## The past view
+
+The sidebar is the quick look. The past view is the full one: it opens your note **as it was**, in a pane beside the editor, so you can read an old version on the left while your real, editable note stays on the right. Drag the divider to resize.
+
+Open it with the command **Open past view for current note**, the clock icon in the ribbon, right-click a note in the file explorer, or the history button in the sidebar view's header (which carries your current selection across).
+
+On mobile, or when the window is too narrow to split usefully, it opens as a full-width tab instead.
+
+Once open:
+
+- **Scrub the timeline** at the top to move through versions. Ticks sit where the version actually falls in time, so a flurry of edits looks like a flurry. Versions saved within moments of each other merge into one tick; the arrow keys still step through every single one.
+- **Show changes** flips the pane between the old version and the diff.
+- **Follow / bind** (the pin button) decides whether the pane stays on this note or follows whatever you open. It stays bound by default.
+- **The menu** (⋮) restores the whole version, copies it, or saves it as a new note beside the original.
+
+### Old versions do not run their code
+
+If a version contains a `dataviewjs` or `dataview` block, Time Machine shows it as plain text rather than running it, and tells you how many blocks it skipped.
+
+This is deliberate. Rendering an old version would otherwise execute that code against your vault **as it is today** -- including code you deleted from the note precisely because you did not want it running. If you would rather see those blocks live, turn on **Run code in old versions** in settings.
+
 ## Commands
 
 | Command                                                         | Description                                                                                    |

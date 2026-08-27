@@ -1,4 +1,4 @@
-import { ItemView, Notice, type TFile, type WorkspaceLeaf } from 'obsidian'
+import { ItemView, Notice, setIcon, type TFile, type WorkspaceLeaf } from 'obsidian'
 import { VIEW_TYPE, PLUGIN_NAME } from '../constants'
 import type { TimeMachinePlugin } from '../plugin'
 import type { DiffComparisonMode } from '../types/plugin-settings.intf'
@@ -12,6 +12,7 @@ import { renderComparisonModeControl } from './components/comparison-mode-contro
 import { showConfirmDialog } from './components/confirm-modal'
 import { renderRestoreFullButton } from './components/restore-button'
 import type { HistoryView } from './history-view'
+import { openPastView } from '../services/past-view-launcher'
 
 export class TimeMachineView extends ItemView implements HistoryView {
     private readonly plugin: TimeMachinePlugin
@@ -156,7 +157,22 @@ export class TimeMachineView extends ItemView implements HistoryView {
         }
 
         const count = this.session.snapshots.length
-        this.tmHeaderEl.createDiv({ cls: 'tm-header-file', text: file.name })
+        const row = this.tmHeaderEl.createDiv({ cls: 'tm-header-row' })
+        row.createDiv({ cls: 'tm-header-file', text: file.name })
+
+        if (this.plugin.settings.pastViewEnabled) {
+            // Promotes to the full past view, carrying the current selection so
+            // the user does not lose their place.
+            const openBtn = row.createEl('button', {
+                cls: 'tm-header-open-past clickable-icon',
+                attr: { 'aria-label': 'Open past view' }
+            })
+            setIcon(openBtn, 'history')
+            openBtn.addEventListener('click', () => {
+                void openPastView(this.plugin, file, this.session.getSelectedId())
+            })
+        }
+
         this.tmHeaderEl.createDiv({
             cls: 'tm-header-count',
             text: `${String(count)} snapshot${count === 1 ? '' : 's'}`
