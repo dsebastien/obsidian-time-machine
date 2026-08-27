@@ -1,4 +1,4 @@
-import { ItemView, Modal, type TFile, type WorkspaceLeaf } from 'obsidian'
+import { ItemView, Notice, type TFile, type WorkspaceLeaf } from 'obsidian'
 import { VIEW_TYPE, PLUGIN_NAME } from '../constants'
 import type { TimeMachinePlugin } from '../plugin'
 import type { GitMetadata, Snapshot } from '../types/snapshot.intf'
@@ -10,6 +10,7 @@ import { RestoreService } from '../services/restore.service'
 import { renderEmptyState } from './components/empty-state'
 import { TimelineSliderComponent } from './components/timeline-slider'
 import { DiffViewerComponent } from './components/diff-viewer'
+import { showConfirmDialog } from './components/confirm-modal'
 import { formatBackupDate } from '../domain/backup'
 import { log } from '../../utils/log'
 
@@ -19,6 +20,16 @@ export class TimeMachineView extends ItemView {
     private allSnapshots: Snapshot[] = []
     private snapshots: Snapshot[] = []
     private selectedSnapshotIndex: number | null = null
+
+    // Monotonic request generation. Every async entry point captures the value
+    // at entry and bails if it is no longer current, so a slow snapshot fetch
+    // (git can take seconds) can never overwrite the results of a newer one.
+    private requestGeneration = 0
+
+    // The exact file content the currently rendered diff was computed against.
+    // Hunk restore is addressed by ordinal into that diff, so applying it to
+    // any other content would restore the wrong hunk.
+    private diffBaseContent: string | null = null
 
     // Do NOT rename to `headerEl` — it collides with `ItemView.headerEl`. A bare
     // class field emits as `this.headerEl = undefined` after `super()` and
@@ -88,17 +99,20 @@ export class TimeMachineView extends ItemView {
 
         this.currentFile = file
         this.selectedSnapshotIndex = null
+        this.diffBaseContent = null
+        const generation = ++this.requestGeneration
 
+        let fetched: Snapshot[]
         try {
-            this.allSnapshots = await SnapshotService.getSnapshots(
-                this.app,
-                file.path,
-                this.plugin.settings
-            )
+            fetched = await SnapshotService.getSnapshots(this.app, file.path, this.plugin.settings)
         } catch (error) {
             log('Failed to fetch snapshots', 'error', error)
-            this.allSnapshots = []
+            fetched = []
         }
+
+        // A newer request superseded this one while the fetch was in flight.
+        if (generation !== this.requestGeneration) return
+        this.allSnapshots = fetched
 
         if (this.allSnapshots.length === 0) {
             this.snapshots = []
@@ -115,6 +129,7 @@ export class TimeMachineView extends ItemView {
 
         // Filter out snapshots identical to current file content
         const currentContent = await this.app.vault.read(file)
+        if (generation !== this.requestGeneration) return
         this.snapshots = this.allSnapshots.filter((snapshot) => snapshot.data !== currentContent)
 
         this.renderHeader(file)
@@ -134,7 +149,9 @@ export class TimeMachineView extends ItemView {
     async refreshCurrentContent(): Promise<void> {
         if (!this.currentFile || this.allSnapshots.length === 0) return
 
+        const generation = ++this.requestGeneration
         const currentContent = await this.app.vault.read(this.currentFile)
+        if (generation !== this.requestGeneration) return
         const previousCount = this.snapshots.length
         this.snapshots = this.allSnapshots.filter((snapshot) => snapshot.data !== currentContent)
 
@@ -210,7 +227,9 @@ export class TimeMachineView extends ItemView {
         const snapshot = this.snapshots[index]
         if (!snapshot || !this.currentFile) return
 
+        const generation = ++this.requestGeneration
         const currentContent = await this.app.vault.read(this.currentFile)
+        if (generation !== this.requestGeneration) return
         const mode = this.plugin.settings.diffComparisonMode
 
         // `snapshots` is newest-first, so the chronologically next (newer)
@@ -228,6 +247,9 @@ export class TimeMachineView extends ItemView {
             newLabel
         )
 
+        // Remember what the rendered hunks are addressed against, so a restore
+        // click can verify nothing shifted underneath it.
+        this.diffBaseContent = currentContent
         this.diffViewer.render(diff, mode)
     }
 
@@ -245,7 +267,8 @@ export class TimeMachineView extends ItemView {
         const snapshot = this.snapshots[this.selectedSnapshotIndex]
         if (!snapshot) return
 
-        const confirmed = await this.showConfirmDialog(
+        const confirmed = await showConfirmDialog(
+            this.app,
             'Restore version',
             `Are you sure you want to restore this file to the snapshot from ${new Date(snapshot.ts).toLocaleString()}? The current content will be replaced.`
         )
@@ -267,6 +290,17 @@ export class TimeMachineView extends ItemView {
         if (!snapshot) return
 
         const currentContent = await this.app.vault.read(this.currentFile)
+
+        // The rendered hunks were computed against `diffBaseContent`. If the file
+        // changed since (an edit lands during the 1s refresh debounce), the hunk
+        // ordinal no longer addresses the same change — applying it would restore
+        // the wrong hunk. Refuse and re-render instead.
+        if (this.diffBaseContent !== null && currentContent !== this.diffBaseContent) {
+            new Notice('Time Machine: The file changed — the diff was refreshed, try again.')
+            await this.computeAndRenderDiff()
+            return
+        }
+
         const success = await RestoreService.restoreHunk(
             this.app,
             this.currentFile,
@@ -278,61 +312,5 @@ export class TimeMachineView extends ItemView {
         if (success) {
             await this.computeAndRenderDiff()
         }
-    }
-
-    private showConfirmDialog(title: string, message: string): Promise<boolean> {
-        return new Promise((resolve) => {
-            const modal = new ConfirmModal(this.app, title, message, (result) => {
-                resolve(result)
-            })
-            modal.open()
-        })
-    }
-}
-
-class ConfirmModal extends Modal {
-    private readonly title: string
-    private readonly message: string
-    private readonly callback: (result: boolean) => void
-
-    constructor(
-        app: import('obsidian').App,
-        title: string,
-        message: string,
-        callback: (result: boolean) => void
-    ) {
-        super(app)
-        this.title = title
-        this.message = message
-        this.callback = callback
-    }
-
-    override onOpen(): void {
-        const { contentEl } = this
-        contentEl.empty()
-
-        contentEl.createEl('h3', { text: this.title })
-        contentEl.createEl('p', { text: this.message })
-
-        const buttonContainer = contentEl.createDiv({ cls: 'tm-confirm-buttons' })
-
-        const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' })
-        cancelBtn.addEventListener('click', () => {
-            this.callback(false)
-            this.close()
-        })
-
-        const confirmBtn = buttonContainer.createEl('button', {
-            cls: 'mod-warning',
-            text: 'Restore'
-        })
-        confirmBtn.addEventListener('click', () => {
-            this.callback(true)
-            this.close()
-        })
-    }
-
-    override onClose(): void {
-        this.contentEl.empty()
     }
 }

@@ -5,6 +5,7 @@ import type { TimeMachinePlugin } from '../plugin'
 import type { Snapshot } from '../types/snapshot.intf'
 import { SnapshotService } from '../services/snapshot.service'
 import { DiffService } from '../services/diff.service'
+import { RestoreService } from '../services/restore.service'
 import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -461,6 +462,91 @@ describe('TimeMachineView', () => {
             expect(v.currentFile).toBeNull()
             expect(v.allSnapshots).toEqual([])
             expect(v.snapshots).toEqual([])
+        })
+    })
+
+    describe('stale async results', () => {
+        test('a slow fetch does not overwrite the results of a newer one', async () => {
+            const view = createView()
+            const v: ViewInternals = view
+            const slowFile = createMockFile('slow.md')
+            const fastFile = createMockFile('fast.md')
+
+            const slowSnapshots = [createSnapshot('slow.md', 1000, 'slow data')]
+            const fastSnapshots = [createSnapshot('fast.md', 2000, 'fast data')]
+
+            // The first call resolves only after the second has already finished.
+            let releaseSlow: (value: Snapshot[]) => void = () => {}
+            const slowPromise = new Promise<Snapshot[]>((resolve) => {
+                releaseSlow = resolve
+            })
+
+            getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockImplementation(
+                (_app: unknown, path: string) =>
+                    path === 'slow.md' ? slowPromise : Promise.resolve(fastSnapshots)
+            ) as ReturnType<typeof spyOn>
+
+            v.app.vault.read = mock(async () => 'current content')
+
+            const slowUpdate = view.updateForFile(slowFile)
+            await view.updateForFile(fastFile)
+
+            releaseSlow(slowSnapshots)
+            await slowUpdate
+
+            // The stale fetch must be discarded entirely.
+            expect(view.getCurrentFile()).toBe(fastFile)
+            expect(v.allSnapshots).toEqual(fastSnapshots)
+        })
+    })
+
+    describe('hunk restore revision guard', () => {
+        test('refuses to apply a hunk when the file changed since the diff was rendered', async () => {
+            const view = createView()
+            const v: ViewInternals = view
+
+            const restoreSpy = spyOn(RestoreService, 'restoreHunk').mockResolvedValue(true)
+            try {
+                v.currentFile = createMockFile('note.md')
+                v.selectedSnapshotIndex = 0
+                v.snapshots = [createSnapshot('note.md', 1000, 'old content')]
+                v.plugin.settings.diffComparisonMode = 'current'
+
+                // The rendered diff was computed against this content...
+                v.diffBaseContent = 'content at render time'
+                // ...but the file says something else by the time restore is clicked.
+                v.app.vault.read = mock(async () => 'content after an edit')
+                v.diffViewer = { render: mock(() => {}) }
+
+                await v.handleRestoreHunk(0)
+
+                expect(restoreSpy).not.toHaveBeenCalled()
+            } finally {
+                restoreSpy.mockRestore()
+            }
+        })
+
+        test('applies the hunk when the content still matches the rendered diff', async () => {
+            const view = createView()
+            const v: ViewInternals = view
+
+            const restoreSpy = spyOn(RestoreService, 'restoreHunk').mockResolvedValue(true)
+            try {
+                v.currentFile = createMockFile('note.md')
+                v.selectedSnapshotIndex = 0
+                v.snapshots = [createSnapshot('note.md', 1000, 'old content')]
+                v.plugin.settings.diffComparisonMode = 'current'
+
+                v.diffBaseContent = 'unchanged content'
+                v.app.vault.read = mock(async () => 'unchanged content')
+                v.diffViewer = { render: mock(() => {}) }
+
+                await v.handleRestoreHunk(0)
+
+                expect(restoreSpy).toHaveBeenCalled()
+            } finally {
+                restoreSpy.mockRestore()
+            }
         })
     })
 })
