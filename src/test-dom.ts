@@ -8,7 +8,60 @@ import { mock } from 'bun:test'
  * gets created — its class, text, and attributes — plus the click and keydown
  * handlers registered on it, so a test can assert what was rendered and
  * simulate interaction by class name.
+ *
+ * Everything here is explicitly typed. The mock deliberately avoids `any`:
+ * Obsidian's plugin review rejects sources that disable `no-explicit-any`, and
+ * a loosely typed mock is also free to drift from the real API it stands in for.
  */
+
+/** Options accepted by Obsidian's `createDiv` / `createSpan` / `createEl`. */
+export interface ElOptions {
+    cls?: string
+    text?: string
+    attr?: Record<string, string>
+}
+
+/** A rectangle, as returned by `getBoundingClientRect`. */
+export interface MockRect {
+    left: number
+    right: number
+    width: number
+    top: number
+    bottom: number
+    height: number
+}
+
+/**
+ * The shape the components actually use. Kept narrow on purpose: anything a
+ * component reaches for that is missing here shows up as a test failure rather
+ * than being silently swallowed by a permissive type.
+ */
+export interface MockElement {
+    clientWidth: number
+    clientHeight: number
+    scrollLeft: number
+    scrollWidth: number
+    tabIndex: number
+    textContent: string
+    ownerDocument: { activeElement: MockElement | null }
+    win: {
+        requestAnimationFrame: (cb: () => void) => number
+        setTimeout: (cb: () => void) => number
+    }
+    getBoundingClientRect: () => MockRect
+    focus: () => void
+    empty: () => void
+    createDiv: (opts?: ElOptions) => MockElement
+    createSpan: (opts?: ElOptions) => MockElement
+    createEl: (tag: string, opts?: ElOptions) => MockElement
+    addClass: () => void
+    setText: (value: string) => void
+    setAttribute: (name: string, value: string) => void
+    prepend: () => void
+    addEventListener: (type: string, fn: (event: unknown) => void) => void
+    style: { setProperty: (name: string, value: string) => void }
+    children: unknown[]
+}
 
 export interface Recording {
     /** Class strings of every created element, in creation order. */
@@ -34,8 +87,7 @@ export interface Recording {
     /** Callbacks deferred via `requestAnimationFrame`/`setTimeout`, uninvoked. */
     animationFrames: (() => void)[]
     /** The created elements themselves, keyed by class string. */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    focusables: Map<string, any>
+    focusables: Map<string, MockElement>
 }
 
 export function createRecording(): Recording {
@@ -53,32 +105,36 @@ export function createRecording(): Recording {
     }
 }
 
-interface ElOptions {
-    cls?: string
-    text?: string
-    attr?: Record<string, string>
-}
+const EMPTY_RECT: MockRect = { left: 0, right: 0, width: 0, top: 0, bottom: 0, height: 0 }
 
 /**
  * @param clientWidth width reported by every element, so layout-dependent
  * components can be exercised at a chosen size.
  */
 export function createRecordingEl(rec: Recording, ownCls = '', clientWidth = 600): HTMLElement {
-    const child = (opts?: ElOptions): HTMLElement => {
+    return createMockEl(rec, ownCls, clientWidth) as unknown as HTMLElement
+}
+
+/** Same element, typed as the mock rather than as an `HTMLElement`. */
+export function createMockEl(rec: Recording, ownCls = '', clientWidth = 600): MockElement {
+    const child = (opts?: ElOptions): MockElement => {
         const cls = opts?.cls ?? ''
         if (cls) rec.classes.push(cls)
         if (opts?.text) rec.texts.push(opts.text)
         if (opts?.attr) {
             rec.attrsByClass.set(cls, { ...(rec.attrsByClass.get(cls) ?? {}), ...opts.attr })
         }
-        return createRecordingEl(rec, cls, clientWidth)
+        return createMockEl(rec, cls, clientWidth)
     }
 
-    const el = {
+    const el: MockElement = {
         clientWidth,
+        clientHeight: 0,
+        scrollLeft: 0,
+        scrollWidth: 0,
         tabIndex: 0,
         textContent: '',
-        ownerDocument: { activeElement: null as unknown },
+        ownerDocument: { activeElement: null },
         // Obsidian augments elements with `win`. Callbacks are captured rather
         // than run, so layout-dependent code stays out of these tests.
         win: {
@@ -91,17 +147,7 @@ export function createRecordingEl(rec: Recording, ownCls = '', clientWidth = 600
                 return 0
             }
         },
-        getBoundingClientRect: () => ({
-            left: 0,
-            right: 0,
-            width: 0,
-            top: 0,
-            bottom: 0,
-            height: 0
-        }),
-        scrollLeft: 0,
-        scrollWidth: 0,
-        clientHeight: 0,
+        getBoundingClientRect: () => EMPTY_RECT,
         focus: () => {
             rec.focused.push(ownCls)
         },
@@ -133,11 +179,11 @@ export function createRecordingEl(rec: Recording, ownCls = '', clientWidth = 600
                 rec.stylesByClass.set(ownCls, existing)
             }
         },
-        children: [] as unknown[]
+        children: []
     }
 
     if (ownCls) rec.focusables.set(ownCls, el)
-    return el as unknown as HTMLElement
+    return el
 }
 
 /** Finds a recorded click handler whose class string contains `fragment`. */

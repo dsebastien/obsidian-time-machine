@@ -3,7 +3,7 @@ import { TimeMachinePlugin } from './plugin'
 import { TimeMachineView } from './ui/time-machine-view'
 import { VIEW_TYPE } from './constants'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- reaches into private view state that has no public accessor
 type PluginInternals = any
 
 // Track registered events and intervals

@@ -25,7 +25,7 @@ function defaultSettings(overrides?: Partial<PluginSettings>): PluginSettings {
     return { ...DEFAULT_SETTINGS, ...overrides }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- bun's spyOn return type widens to any; the alias keeps call sites readable
 const spies: (ReturnType<typeof spyOn> | null)[] = []
 
 afterEach(() => {

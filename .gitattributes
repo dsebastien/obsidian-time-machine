@@ -42,7 +42,10 @@
 # Don't include in releases
 .github/ export-ignore
 .husky/ export-ignore
-CHANGELOG.md export-ignore
+# CHANGELOG.md is deliberately NOT export-ignored: the build inlines it into
+# the "What's new" view, and Obsidian's plugin review builds from an archive.
+# Excluding it made that build produce a release with empty release notes —
+# and, while the source still imported the file directly, fail outright.
 prettier.config.cjs export-ignore
 eslint.config.ts export-ignore
 commitlint.config.ts export-ignore

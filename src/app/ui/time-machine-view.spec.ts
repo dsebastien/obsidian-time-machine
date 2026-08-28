@@ -10,11 +10,11 @@ import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 import { SnapshotCache } from '../services/snapshot-cache'
 import { createRecording, createRecordingEl } from '../../test-dom'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- reaches into private view state that has no public accessor
 type ViewInternals = any
 
 function createMockFile(path: string, name?: string): TFile {
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
     return { path, name: name ?? path.split('/').pop() ?? path } as unknown as TFile
 }
 
@@ -85,7 +85,7 @@ function createView(): TimeMachineView {
 }
 
 // Spy references for cleanup
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- bun's spyOn return type widens to any; the alias keeps call sites readable
 let getSnapshotsSpy: ReturnType<typeof spyOn> | null = null
 
 afterEach(() => {

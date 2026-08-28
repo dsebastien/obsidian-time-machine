@@ -6,7 +6,7 @@ import { SnapshotService } from '../services/snapshot.service'
 import { DEFAULT_SETTINGS, type PluginSettings } from '../types/plugin-settings.intf'
 import type { Snapshot } from '../types/snapshot.intf'
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- bun's spyOn return type widens to any; the alias keeps call sites readable
 let spy: ReturnType<typeof spyOn> | null = null
 afterEach(() => {
     spy?.mockRestore()
@@ -24,7 +24,7 @@ function snap(id: string, ts: number, data: string): Snapshot {
     }
 }
 
-// eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+// eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
 const file = { path: 'note.md', name: 'note.md' } as unknown as TFile
 
 function createSession(
@@ -78,7 +78,7 @@ describe('SnapshotSession', () => {
                 path === 'slow.md' ? slow : Promise.resolve([snap('fast', 1000, 'x')])
             ) as ReturnType<typeof spyOn>
 
-            // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+            // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
             const slowFile = { path: 'slow.md', name: 'slow.md' } as unknown as TFile
             const first = session.loadFor(slowFile)
             await session.loadFor(file)
@@ -284,7 +284,7 @@ describe('SnapshotSession', () => {
     })
 
     describe('cross-file safety', () => {
-        // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+        // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
         const other = { path: 'other.md', name: 'other.md' } as unknown as TFile
 
         test("drops the previous note's snapshots before awaiting the new fetch", async () => {

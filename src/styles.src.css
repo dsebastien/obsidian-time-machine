@@ -814,8 +814,10 @@
     @apply min-w-0 flex-1 truncate;
 }
 
-.tm-hidden {
-    display: none !important;
+/* Doubled class rather than `!important`: Obsidian's plugin review flags
+   `!important`, and specificity achieves the same override. */
+.tm-hidden.tm-hidden {
+    display: none;
 }
 
 .tm-header-open-past {

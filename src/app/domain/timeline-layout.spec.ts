@@ -57,6 +57,21 @@ describe('bucketFor', () => {
         expect(bucketFor(NOW - 20 * DAY, NOW)).toBe('month')
         expect(bucketFor(NOW - 200 * DAY, NOW)).toBe('year')
     })
+    test('does not depend on the system clock', () => {
+        // `bucketFor` takes `now` for a reason: using date-fns' isToday/
+        // isYesterday read the real clock, so the same inputs bucketed
+        // differently either side of midnight and the suite broke overnight.
+        const reference = new Date('2020-01-15T12:00:00Z').getTime()
+        expect(bucketFor(reference, reference)).toBe('today')
+        expect(bucketFor(reference - DAY, reference)).toBe('yesterday')
+        expect(bucketFor(reference - 3 * DAY, reference)).toBe('week')
+    })
+
+    test('treats a timestamp in the future as today rather than falling through', () => {
+        // Clock skew between machines can hand us a snapshot dated slightly
+        // ahead of now.
+        expect(bucketFor(NOW + 60_000, NOW)).toBe('today')
+    })
 })
 
 describe('computeVersionRail', () => {

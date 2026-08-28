@@ -10,7 +10,7 @@ function createFile(path: string, parentPath: string | null): TFile {
         name: `${basename}.md`,
         parent: parentPath === null ? null : { path: parentPath }
     }
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
     return stub as unknown as TFile
 }
 

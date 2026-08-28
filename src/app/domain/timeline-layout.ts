@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, isToday, isYesterday } from 'date-fns'
+import { differenceInCalendarDays } from 'date-fns'
 import type { Snapshot, SnapshotSource } from '../types/snapshot.intf'
 
 /**
@@ -81,12 +81,18 @@ const BUCKET_LABELS: Record<Exclude<BucketKey, 'year'>, { label: string; shortLa
     month: { label: 'Last 30 days', shortLabel: '30 days' }
 }
 
-/** Which time bucket a timestamp falls into, relative to `now`. */
+/**
+ * Which time bucket a timestamp falls into, relative to `now`.
+ *
+ * Every boundary is measured against the `now` argument. `isToday` and
+ * `isYesterday` read the system clock instead, which made the result depend on
+ * something the caller had no say over — the same inputs bucketed differently
+ * either side of midnight.
+ */
 export function bucketFor(ts: number, now: number): BucketKey {
-    if (isToday(ts)) return 'today'
-    if (isYesterday(ts)) return 'yesterday'
-
     const days = differenceInCalendarDays(now, ts)
+    if (days <= 0) return 'today'
+    if (days === 1) return 'yesterday'
     if (days <= 7) return 'week'
     if (days <= 30) return 'month'
     return 'year'
