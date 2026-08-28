@@ -5,6 +5,10 @@ nav_order: 3
 
 # Configuration
 
+Time Machine requires **Obsidian 1.13.0 or later**. Its settings pane is built on
+the declarative settings API introduced in 1.13; on an older version the plugin
+does not load at all.
+
 ## File Recovery settings
 
 Time Machine reads snapshots from the **File Recovery** core plugin. To configure it, go to **Settings -> Core plugins -> File Recovery** and adjust:
@@ -23,8 +27,8 @@ Time Machine has the following settings, accessible via **Settings -> Community 
 
 | Setting                | Description                                                     | Default |
 | ---------------------- | --------------------------------------------------------------- | ------- |
-| Enable git integration | Show git commits as snapshots on the timeline (desktop only)    | On      |
-| Maximum git commits    | Maximum number of git commits to fetch per file (slider, 1-200) | 50      |
+| Enable Git integration | Show Git commits as snapshots on the timeline (desktop only)    | On      |
+| Maximum Git commits    | Maximum number of Git commits to fetch per file (slider, 1-200) | 50      |
 
 **Note:** Git integration only works on the desktop app. On mobile, these settings have no effect and no git operations are attempted.
 

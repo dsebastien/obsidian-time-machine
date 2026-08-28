@@ -124,8 +124,18 @@ export class TimeMachineSettingTab extends PluginSettingTab {
                 name: 'Follow me on X',
                 desc: 'Sébastien Dubois (@dSebastien)',
                 searchable: false,
-                action: () => {
-                    window.open('https://x.com/dSebastien')
+                // A CTA button, not a row `action:`. `action:` makes the WHOLE
+                // row clickable and draws no button — the old tab had a real
+                // "Follow me on X" button, and the docs describe one.
+                render: (setting): void => {
+                    setting.addButton((button) => {
+                        button
+                            .setCta()
+                            .setButtonText('Follow me on X')
+                            .onClick(() => {
+                                window.open('https://x.com/dSebastien')
+                            })
+                    })
                 }
             },
             {
@@ -140,6 +150,11 @@ export class TimeMachineSettingTab extends PluginSettingTab {
                             // Render INSIDE the row (settingEl), never into
                             // group.listEl — see the class docs above.
                             setting.infoEl.remove() // the section draws its own headings
+                            // `.setting-item` is a flex ROW. The support block
+                            // is a stack of full-width rows, so without this it
+                            // would lay its heading, buttons and badge out
+                            // side by side instead of one per line.
+                            setting.settingEl.addClass('tm-settings-stack')
                             renderSupportSection(setting.settingEl, (el) => {
                                 this.renderBuyMeACoffeeBadge(el)
                             })

@@ -43,7 +43,7 @@ This is deliberate. Rendering an old version would otherwise execute that code a
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | **Time Machine: Open view**                                     | Opens the Time Machine panel in the sidebar                                                    |
 | **Time Machine: Compare versions side by side**                 | Opens the side-by-side view for the current note, beside the editor                            |
-| **Time Machine: Force file recovery snapshot for current file** | Immediately creates a File Recovery snapshot for the active file, bypassing the interval timer |
+| **Time Machine: Force File Recovery snapshot for current file** | Immediately creates a File Recovery snapshot for the active file, bypassing the interval timer |
 
 Only markdown notes have a history, so **Compare versions side by side** does not appear unless a markdown note is active. It is also hidden entirely when the side-by-side view is turned off in settings.
 

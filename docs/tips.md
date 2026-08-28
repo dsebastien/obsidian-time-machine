@@ -9,7 +9,7 @@ nav_order: 90
 
 File Recovery's default snapshot interval is 2 minutes. If you want more granular history, reduce the interval in **Settings -> Core plugins -> File Recovery**. Keep in mind that shorter intervals use more storage.
 
-You can also use the **Time Machine: Force file recovery snapshot for current file** command to create a snapshot on demand, without waiting for the next interval. This is useful before making a large edit, so you have a restore point.
+You can also use the **Time Machine: Force File Recovery snapshot for current file** command to create a snapshot on demand, without waiting for the next interval. This is useful before making a large edit, so you have a restore point.
 
 If your vault is a git repository, committing frequently gives you additional snapshots on the timeline alongside File Recovery's automatic ones.
 
@@ -26,7 +26,7 @@ The Time Machine panel stays in sync with your active file. Keep it open in the 
 - Git integration is **read-only** -- Time Machine never creates commits, pushes, or modifies your repository
 - The `--follow` flag is used when fetching git history, so renames are tracked
 - If a file is not tracked by git, only File Recovery snapshots are shown (no error)
-- Reduce the "Maximum git commits" setting if loading is slow for files with long histories
+- Reduce the "Maximum Git commits" setting if loading is slow for files with long histories
 - Git integration only works on **desktop**; on mobile, only File Recovery snapshots are shown
 
 ## Troubleshooting
@@ -50,7 +50,7 @@ Go to **Settings -> Core plugins** and enable **File Recovery**. This message on
 - Make sure git is installed and available on your system (`git --version` in a terminal)
 - Verify your vault is inside a git repository (look for a `.git` folder)
 - Check that the file has been committed at least once
-- Confirm that "Enable git integration" is turned on in the Time Machine settings
+- Confirm that "Enable Git integration" is turned on in the Time Machine settings
 - Git integration is desktop-only -- it does not work on mobile
 
 ### The view is empty after switching files
