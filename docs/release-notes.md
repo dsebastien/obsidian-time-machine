@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.5.1 (2026-08-28)
+
+### Bug Fixes
+
+- **plugin:** satisfy the Obsidian plugin review checks
+
 ## 1.5.0 (2026-08-27)
 
 ### Features

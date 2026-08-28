@@ -2,7 +2,7 @@
     "id": "time-machine",
     "name": "Time Machine",
     "description": "Browse, compare, and restore previous versions of your notes using built-in file-recovery snapshots.",
-    "version": "1.5.0",
+    "version": "1.5.1",
     "minAppVersion": "1.8.7",
     "isDesktopOnly": false,
     "author": "Sébastien Dubois",
