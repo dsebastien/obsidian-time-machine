@@ -1,5 +1,46 @@
 # Release Notes
 
+## 2.0.0 (2026-08-28)
+
+### ⚠ BREAKING CHANGES
+
+- **plugin:** requires Obsidian 1.13.0 (minAppVersion bumped from 1.8.7).
+
+`getSettingDefinitions()` replaces `display()` — it is all-or-nothing, so the
+whole pane is now declarative. Obsidian owns navigation, focus and ARIA, and
+every name/desc is indexed by the settings search.
+
+The write path changed with it. The tab used to mutate `plugin.settings` and
+then call `saveSettings()`, so a failed write left memory ahead of disk and the
+control showing a value that was never stored. All edits now go through a
+serialized, persist-then-commit `updateSettings`: memory is swapped only after
+saveData() resolves, and writes queue so each mutation derives from the
+previous committed state.
+
+That matters more here than elsewhere because this plugin has two writers.
+`setComparisonMode` — driven by the in-panel toggle, one click away from a pane
+edit — also routes through `updateSettings` now; before, the two could interleave
+and the second commit would drop the first edit.
+
+Preserved from the old tab: the ribbon sync on "Enable past view", and the view
+refresh on "Run code in old versions" (which must unload code already running in
+an open past view, not just affect the next render). Both now run only after the
+write lands. The async Git-availability probe re-checks that its row is still
+connected before writing, since the pane can close while it runs.
+
+Also ports the template's settings guard spec, which fails the two render-hook
+patterns that no test can otherwise catch, and documents the traps in AGENTS.md.
+
+### Features
+
+- **plugin:** declare settings via getSettingDefinitions (Obsidian 1.13)
+
+### Bug Fixes
+
+- **build:** align with the catalog reviewer's archive, ruleset and audit
+- **plugin:** restore the follow button and stack the support block
+- **ui:** move the settings-stack rule out of the components layer
+
 ## 1.5.2 (2026-08-28)
 
 ### Bug Fixes

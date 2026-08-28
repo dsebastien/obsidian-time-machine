@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0](https://github.com/dsebastien/obsidian-time-machine/compare/1.5.2...2.0.0) (2026-08-28)
+
+### ⚠ BREAKING CHANGES
+
+* **plugin:** requires Obsidian 1.13.0 (minAppVersion bumped from 1.8.7).
+
+`getSettingDefinitions()` replaces `display()` — it is all-or-nothing, so the
+whole pane is now declarative. Obsidian owns navigation, focus and ARIA, and
+every name/desc is indexed by the settings search.
+
+The write path changed with it. The tab used to mutate `plugin.settings` and
+then call `saveSettings()`, so a failed write left memory ahead of disk and the
+control showing a value that was never stored. All edits now go through a
+serialized, persist-then-commit `updateSettings`: memory is swapped only after
+saveData() resolves, and writes queue so each mutation derives from the
+previous committed state.
+
+That matters more here than elsewhere because this plugin has two writers.
+`setComparisonMode` — driven by the in-panel toggle, one click away from a pane
+edit — also routes through `updateSettings` now; before, the two could interleave
+and the second commit would drop the first edit.
+
+Preserved from the old tab: the ribbon sync on "Enable past view", and the view
+refresh on "Run code in old versions" (which must unload code already running in
+an open past view, not just affect the next render). Both now run only after the
+write lands. The async Git-availability probe re-checks that its row is still
+connected before writing, since the pane can close while it runs.
+
+Also ports the template's settings guard spec, which fails the two render-hook
+patterns that no test can otherwise catch, and documents the traps in AGENTS.md.
+
+### Features
+
+* **plugin:** declare settings via getSettingDefinitions (Obsidian 1.13) ([0f5974d](https://github.com/dsebastien/obsidian-time-machine/commit/0f5974dfeda3bcba2accd1460806666b0f5d98ad))
+
+### Bug Fixes
+
+* **build:** align with the catalog reviewer's archive, ruleset and audit ([f932f13](https://github.com/dsebastien/obsidian-time-machine/commit/f932f133211ee1973e6ff4c373269427ad57fbad))
+* **plugin:** restore the follow button and stack the support block ([1bf87f5](https://github.com/dsebastien/obsidian-time-machine/commit/1bf87f5bbeff8898bcb68abf0f70b29b71d50c94))
+* **ui:** move the settings-stack rule out of the components layer ([d5a19dd](https://github.com/dsebastien/obsidian-time-machine/commit/d5a19ddec4dd131fae4277c6713579841d31f33c))
+
 ## [1.5.2](https://github.com/dsebastien/obsidian-time-machine/compare/1.5.1...1.5.2) (2026-08-28)
 
 ### Bug Fixes
@@ -163,6 +204,7 @@ All notable changes to this project will be documented in this file.
 * **all:** fied the release workflow to name the tags correctly ([95aa6ff](https://github.com/dsebastien/obsidian-time-machine/commit/95aa6ffd40e718d055e24e1f052ed374e171376b))
 * **all:** fix image url ([1a0086b](https://github.com/dsebastien/obsidian-time-machine/commit/1a0086b1982b8da1f6e3c3135f27dcd9bb2ff787))
 * **all:** use console.debug instead of console.log ([09306e4](https://github.com/dsebastien/obsidian-time-machine/commit/09306e492c81437dff10dfe8b3b5e5734be1382a))
+
 
 
 
