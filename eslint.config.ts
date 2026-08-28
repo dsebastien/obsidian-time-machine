@@ -42,6 +42,8 @@ export default tseslint.config(
             globals: {
                 ...globals.node,
                 ...globals.browser,
+                // Tests and build tooling run under the Bun runtime
+                Bun: 'readonly',
                 // Obsidian global functions
                 createDiv: 'readonly',
                 createEl: 'readonly',
@@ -90,9 +92,10 @@ export default tseslint.config(
                         // This plugin, and the Obsidian surfaces it names.
                         'Time Machine',
                         'File Recovery',
-                        // Obsidian's own navigation labels, written the way
-                        // its docs write them: "Settings → Core plugins".
-                        'Settings',
+                        // Obsidian's own label for the core-plugins pane.
+                        // Note: do NOT add 'Settings' here — as a brand it
+                        // would make every ordinary lowercase "settings" in UI
+                        // text a violation.
                         'Core plugins',
                         'Dataview',
                         'Personal Knowledge Management',

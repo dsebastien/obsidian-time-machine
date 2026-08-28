@@ -255,6 +255,49 @@ These rules apply to **`id`**, **`name`**, and **`description`** in `manifest.js
 - File pickers in settings tabs: never hand-roll. Use `AbstractInputSuggest` for inline autocomplete and `FuzzySuggestModal` for a browse-button modal — both cover keyboard nav, theming, and popout-window correctness for free. Hand-rolled menus accumulate inline-style + `document.createElement` lint warnings fast.
 - Replace `window.confirm(...)` with a `Modal` subclass: `confirm()` blocks the UI thread, can't be themed, doesn't play with popout windows, and is forbidden by the scorecard.
 
+### Declarative settings (Obsidian 1.13+) — mandatory approach and traps
+
+This plugin declares its settings via `getSettingDefinitions()` (see
+`src/app/settings/settings-tab.ts`). Keep that approach. Every rule below cost
+a shipped bug somewhere in the plugin collection the first time it was broken;
+`settings-guard.spec.ts` enforces the two statically-catchable ones.
+
+- **`getSettingDefinitions()` REPLACES `display()`.** Non-empty array means
+  `display()` is never called. No partial adoption: the whole settings UI is
+  declarative or none of it. Requires `minAppVersion` 1.13.0.
+- **`Plugin.settings?: unknown` exists in the 1.13+ typings.** Redeclaring the
+  field without `override` is a TS4114 error.
+- **A `render:` hook renders the ROW.** Write into `setting.settingEl` only
+  (drop `setting.infoEl` when the helper draws its own name/desc). Anything
+  written outside the row — `group.listEl`, siblings — is the framework's to
+  discard: the control is silently absent at runtime. Never call
+  `settingEl.remove()`.
+- **An async `render:` hook must re-check `settingEl.isConnected`.** The pane
+  can close or re-render while the probe runs; writing into a detached row is
+  invisible and races the newer row's answer. The "Git status" row does this.
+- **`defaultValue` is the fallback for a RESOLVER returning undefined/null —
+  not for a cleared input.** On numeric controls it turns a cleared field into
+  a silent reset to the schema default. Declare none; let a bounds check refuse
+  the value instead.
+- **A row `action:` fires on the WHOLE row, not on a button.** Destructive rows
+  need their own confirmation modal.
+- **Persist before committing to memory — AND serialize the writes.**
+  `updateSettings` writes to disk first and swaps the in-memory settings only
+  on success, so a rejection rolls the control back to `getControlValue`'s
+  answer, which must be the on-disk truth. Writes also queue: two overlapping
+  calls that both `produce()` from the same base across the save await make the
+  second commit silently drop the first edit. This plugin has TWO writers — the
+  settings pane and the in-panel comparison-mode toggle
+  (`setComparisonMode`) — so both must route through `updateSettings`.
+- **`setControlValue` MUST reject on failure, and validate BEFORE writing.**
+  Resolving tells the framework the write landed, so the pane keeps showing a
+  value that was never stored. Reject, do not coerce.
+- **Side effects run after the write lands**, never before: `syncPastViewRibbon`
+  and `refreshAllViews` act on a value that must already be persisted.
+- **Acceptance is a live vault check.** Nothing in CI renders a settings pane.
+  For ANY settings change, open the settings pane in a real vault before
+  calling it done.
+
 ## Versioning & releases
 
 - Bump `version` in `manifest.json` (SemVer) and update `versions.json` to map plugin version → minimum app version.
@@ -556,15 +599,24 @@ this.addCommand({
 
 ### Persist settings
 
-```ts
-interface MySettings { enabled: boolean }
-const DEFAULT_SETTINGS: MySettings = { enabled: true };
+Load once in `onload`, then never write `this.settings` directly — every
+runtime edit goes through `updateSettings` (see "Declarative settings" above).
 
-async onload() {
-  this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-  await this.saveData(this.settings);
+```ts
+// Reading: plain field access.
+if (this.settings.gitIntegrationEnabled) {
+    /* ... */
 }
+
+// Writing: the serialized, persist-then-commit path.
+await this.updateSettings((draft) => {
+    draft.gitMaxCommits = 100
+})
 ```
+
+`saveSettings()` still exists for load-time migrations that rewrite the whole
+object before any control can race it. It is not the runtime path: it commits
+to memory and disk together, and it does not queue.
 
 ### Register listeners safely
 

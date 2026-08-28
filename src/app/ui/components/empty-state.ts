@@ -37,7 +37,7 @@ export function renderEmptyState(container: HTMLElement, reason: EmptyStateReaso
             })
             wrapper.createEl('p', {
                 cls: 'tm-empty-state-hint',
-                text: 'Enable it in Settings → Core plugins'
+                text: 'Enable it under Core plugins in the Obsidian settings'
             })
             break
         }

@@ -8,6 +8,7 @@ import {
     type TAbstractFile,
     type WorkspaceLeaf
 } from 'obsidian'
+import { produce, type Draft } from 'immer'
 import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
 import { TimeMachineSettingTab } from './settings/settings-tab'
@@ -23,7 +24,9 @@ import type { HistoryView } from './ui/history-view'
 import type { DiffComparisonMode } from './types/plugin-settings.intf'
 
 export class TimeMachinePlugin extends Plugin {
-    settings: PluginSettings = { ...DEFAULT_SETTINGS }
+    // `override` required: `Plugin.settings?: unknown` exists in the 1.13+
+    // typings, so redeclaring it without the modifier is a TS4114 error.
+    override settings: PluginSettings = { ...DEFAULT_SETTINGS }
 
     /** Shared so several open views never fetch the same snapshots twice. */
     readonly snapshotCache = new SnapshotCache()
@@ -57,7 +60,7 @@ export class TimeMachinePlugin extends Plugin {
 
         if (!FileRecoveryService.isAvailable(this.app)) {
             new Notice(
-                'Time Machine: File Recovery core plugin is not enabled. Please enable it in Settings → Core plugins.'
+                'Time Machine: the File Recovery core plugin is not enabled. Enable it under Core plugins in the Obsidian settings.'
             )
         }
 
@@ -259,8 +262,12 @@ export class TimeMachinePlugin extends Plugin {
      */
     async setComparisonMode(mode: DiffComparisonMode): Promise<void> {
         if (this.settings.diffComparisonMode === mode) return
-        this.settings.diffComparisonMode = mode
-        await this.saveSettings()
+        // Through updateSettings, not saveSettings: this is the SECOND writer
+        // into the settings file (the settings pane is the other), and the two
+        // can overlap — the in-panel toggle is one click away from a pane edit.
+        await this.updateSettings((draft) => {
+            draft.diffComparisonMode = mode
+        })
         for (const view of this.getHistoryViews()) {
             view.onComparisonModeChanged()
         }
@@ -315,6 +322,42 @@ export class TimeMachinePlugin extends Plugin {
         log('Settings loaded', 'debug', this.settings)
     }
 
+    /** Serializes settings writes; see {@link updateSettings}. */
+    private settingsWriteChain: Promise<void> = Promise.resolve()
+
+    /**
+     * Apply a mutation to the settings and persist the result. The single
+     * write path for anything that edits a setting at runtime — the settings
+     * pane and the in-panel comparison-mode toggle both route through here.
+     *
+     * Persist-then-commit: memory is swapped only after `saveData()` succeeds,
+     * so a rejected write leaves `this.settings` matching what is on disk and
+     * the control rolls back to the stored truth rather than to a value that
+     * was never saved.
+     *
+     * Serialized: writes queue, and each mutation derives from the previous
+     * COMMITTED state. Without the chain, two overlapping calls both `produce`
+     * from the same base across the save await and the second commit silently
+     * drops the first edit.
+     */
+    updateSettings(mutator: (draft: Draft<PluginSettings>) => void): Promise<void> {
+        const run = async (): Promise<void> => {
+            const next = produce(this.settings, mutator)
+            await this.saveData(next)
+            this.settings = next
+        }
+        const p = this.settingsWriteChain.then(run, run)
+        this.settingsWriteChain = p.catch(() => {})
+        return p
+    }
+
+    /**
+     * Bulk write of the current in-memory settings.
+     *
+     * Load-time migrations only. Runtime edits must go through
+     * {@link updateSettings}, which is the serialized, persist-then-commit
+     * path; this one bypasses both.
+     */
     async saveSettings(): Promise<void> {
         log('Saving settings', 'debug', this.settings)
         await this.saveData(this.settings)
