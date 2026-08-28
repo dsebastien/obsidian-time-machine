@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.5.2 (2026-08-28)
+
+### Bug Fixes
+
+- **plugin:** remove the remaining unsafe-any warnings from the review
+
 ## 1.5.1 (2026-08-28)
 
 ### Bug Fixes
