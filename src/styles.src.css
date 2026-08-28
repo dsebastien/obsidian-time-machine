@@ -18,15 +18,6 @@
         @apply mb-5;
     }
 
-    /* A declarative-settings `render:` hook draws into the row's own
-       `.setting-item`, which is a flex ROW. The support block is a stack of
-       full-width `.setting-item` children, so it needs the row turned back
-       into block flow — otherwise heading, buttons and badge sit side by side.
-       Doubled class for specificity over the theme's own `.setting-item`. */
-    .tm-settings-stack.tm-settings-stack {
-        @apply block;
-    }
-
     /* ========================================
        TIME MACHINE - ROOT
        ======================================== */
@@ -441,6 +432,22 @@
     .tm-confirm-buttons {
         @apply flex justify-end gap-2 mt-4;
     }
+}
+
+/* Declarative-settings support row.
+
+   A `render:` hook draws into the row's own `.setting-item`, which Obsidian
+   styles as a flex ROW. The support block is a stack of full-width
+   `.setting-item` children, so the row has to go back to block flow or its
+   heading, buttons and badge lay out side by side.
+
+   Deliberately OUTSIDE `@layer components`: unlayered rules beat layered ones
+   whatever their specificity, and Obsidian's own `.setting-item { display:
+   flex }` is unlayered. Inside the layer this rule computed to `flex` in a live
+   vault no matter how many times the class was doubled. Verified with
+   getComputedStyle against a rendered pane. */
+.tm-settings-stack {
+    display: block;
 }
 
 /* ========================================
