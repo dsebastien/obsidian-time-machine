@@ -2,7 +2,7 @@ import { describe, expect, test, mock } from 'bun:test'
 import { DiffViewerComponent } from './diff-viewer'
 import type { DiffViewerCallbacks } from './diff-viewer'
 import type { DiffResult } from '../../types/diff.intf'
-import { createRecording, createRecordingEl, type Recording } from '../../../test-dom'
+import { createRecording, createRecordingEl, type Recording } from '../../../../test/dom'
 
 function createDiff(hunks = 1): DiffResult {
     return {

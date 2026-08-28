@@ -6,7 +6,13 @@ import obsidianmd from 'eslint-plugin-obsidianmd'
 
 export default tseslint.config(
     eslint.configs.recommended,
-    ...tseslint.configs.recommended,
+    // Type-checked, not just syntactic. Obsidian's plugin review lints with
+    // type information, so the plain `recommended` preset let a whole class of
+    // findings through unseen locally: `no-unsafe-assignment`, `no-unsafe-call`
+    // and `no-unsafe-member-access` only fire when the checker can tell a value
+    // is `any`. Keeping the same preset here means the review no longer sees
+    // anything this repo does not.
+    ...tseslint.configs.recommendedTypeChecked,
     // @ts-expect-error - obsidianmd types are incomplete but the config works at runtime
     ...obsidianmd.configs['recommended'],
     eslintConfigPrettier,

@@ -45,6 +45,6 @@
         "noEmitOnError": true,
         "sourceMap": true
     },
-    "include": ["src/**/*", "eslint.config.ts", "commitlint.config.ts"],
+    "include": ["src/**/*", "test/**/*", "eslint.config.ts", "commitlint.config.ts"],
     "exclude": ["node_modules", "dist"]
 }

@@ -1,5 +1,3 @@
-import { mock } from 'bun:test'
-
 /**
  * Recording mock DOM for component tests.
  *
@@ -9,10 +7,25 @@ import { mock } from 'bun:test'
  * handlers registered on it, so a test can assert what was rendered and
  * simulate interaction by class name.
  *
- * Everything here is explicitly typed. The mock deliberately avoids `any`:
- * Obsidian's plugin review rejects sources that disable `no-explicit-any`, and
- * a loosely typed mock is also free to drift from the real API it stands in for.
+ * Everything here is explicitly typed, and it deliberately does not import
+ * `mock` from `bun:test`: without Bun's ambient types that helper resolves to
+ * `any`, which produced unsafe-call warnings in Obsidian's plugin review. The
+ * tiny spy below covers what these tests need with types that hold everywhere.
  */
+
+/** A callable that records how many times it ran. */
+export interface Spy {
+    (): void
+    calls: number
+}
+
+function createSpy(): Spy {
+    const spy = (() => {
+        spy.calls += 1
+    }) as Spy
+    spy.calls = 0
+    return spy
+}
 
 /** Options accepted by Obsidian's `createDiv` / `createSpan` / `createEl`. */
 export interface ElOptions {
@@ -50,7 +63,7 @@ export interface MockElement {
     }
     getBoundingClientRect: () => MockRect
     focus: () => void
-    empty: () => void
+    empty: Spy
     createDiv: (opts?: ElOptions) => MockElement
     createSpan: (opts?: ElOptions) => MockElement
     createEl: (tag: string, opts?: ElOptions) => MockElement
@@ -151,7 +164,7 @@ export function createMockEl(rec: Recording, ownCls = '', clientWidth = 600): Mo
         focus: () => {
             rec.focused.push(ownCls)
         },
-        empty: mock(() => {}),
+        empty: createSpy(),
         createDiv: (opts?: ElOptions) => child(opts),
         createSpan: (opts?: ElOptions) => child(opts),
         createEl: (_tag: string, opts?: ElOptions) => child(opts),

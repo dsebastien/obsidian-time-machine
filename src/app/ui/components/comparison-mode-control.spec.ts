@@ -1,6 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
 import { renderComparisonModeControl } from './comparison-mode-control'
-import { createRecording, createRecordingEl } from '../../../test-dom'
+import { createRecording, createRecordingEl } from '../../../../test/dom'
 
 describe('renderComparisonModeControl', () => {
     test('marks the active mode', () => {

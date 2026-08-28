@@ -1,6 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
 import { TimelineBarComponent } from './timeline-bar'
-import { createRecording, createRecordingEl, type Recording } from '../../../test-dom'
+import { createRecording, createRecordingEl, type Recording } from '../../../../test/dom'
 import type { Snapshot, SnapshotSource } from '../../types/snapshot.intf'
 
 function snap(id: string, ts: number, source: SnapshotSource = 'file-recovery'): Snapshot {

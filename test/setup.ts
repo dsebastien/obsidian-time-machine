@@ -5,8 +5,21 @@
  */
 import { mock } from 'bun:test'
 
+/**
+ * `mock.module` typed explicitly.
+ *
+ * Without Bun's ambient types the import resolves to `any`, and every use of it
+ * reported unsafe-call and unsafe-member-access in Obsidian's plugin review.
+ * Naming the contract keeps the call site typed wherever it is linted.
+ */
+// Wrapped rather than detached: pulling `mock.module` off its object and
+// storing it loses the `this` binding, which ESLint rightly objects to.
+const mockModule = (id: string, factory: () => unknown): void => {
+    void (mock.module as (id: string, factory: () => unknown) => unknown)(id, factory)
+}
+
 // Mock the obsidian module (fire-and-forget, no need to await)
-void mock.module('obsidian', () => ({
+mockModule('obsidian', () => ({
     Notice: class Notice {
         constructor(_message: string, _timeout?: number) {
             // No-op for tests

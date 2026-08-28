@@ -17,6 +17,35 @@ export interface GitCommitInfo {
  * Desktop-only git operations. All methods are static and fail gracefully
  * (returning empty/null) when git is not available or commands fail.
  */
+/**
+ * The one function this service needs from Node's `child_process`.
+ *
+ * Declared here rather than taken from `typeof import('node:child_process')`,
+ * which resolves to `any` wherever Node's types are not installed — including
+ * Obsidian's plugin review environment, where it produced unsafe-call and
+ * unsafe-member-access warnings on every use of the module. Spelling out the
+ * contract keeps the call typed no matter whose type roots are present, and
+ * removes a build-time dependency on `@types/node` from a plugin that must
+ * also run on mobile.
+ */
+interface ExecFileOptions {
+    cwd: string
+    timeout: number
+    maxBuffer: number
+    encoding: 'utf-8'
+}
+
+type ExecFileCallback = (error: Error | null, stdout: string, stderr: string) => void
+
+interface ChildProcessLike {
+    execFile: (
+        file: string,
+        args: string[],
+        options: ExecFileOptions,
+        callback: ExecFileCallback
+    ) => void
+}
+
 export class GitService {
     /**
      * Checks if git integration can work in the current environment:
@@ -182,13 +211,12 @@ export class GitService {
      * upstream caller is already gated by `Platform.isDesktopApp`.
      */
     private static async exec(args: string[], cwd: string): Promise<string> {
-        type ChildProcessModule = typeof import('node:child_process')
         const electronRequire = (window as { require?: (id: string) => unknown }).require
         if (!electronRequire) {
             log('child_process not available', 'debug')
             throw new Error('child_process is unavailable on this platform')
         }
-        const cp = electronRequire('child_process') as ChildProcessModule
+        const cp = electronRequire('child_process') as ChildProcessLike
 
         return new Promise((resolve, reject) => {
             cp.execFile(

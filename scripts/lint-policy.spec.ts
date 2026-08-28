@@ -140,4 +140,26 @@ describe('Obsidian plugin review policy', () => {
 
         expect(offending).toEqual([])
     })
+
+    test('shipped source does not depend on ambient Node or Bun types', () => {
+        // The subtle one. `typeof import('node:child_process')` and `bun:test`
+        // resolve to `any` wherever those type packages are absent — as in
+        // Obsidian's review environment — and every use of the value then
+        // reports unsafe-call / unsafe-member-access. Locally the types ARE
+        // installed, so linting cannot reproduce it however strict the config
+        // is. Forbidding the dependency outright is the only check that holds.
+        const offenders: string[] = []
+        for (const path of shippedSources()) {
+            if (path === POLICY_FILE) continue
+            const source = stripComments(readFileSync(path, 'utf8'))
+            if (/typeof\s+import\(['"]node:/.test(source)) {
+                offenders.push(`${relative(path)} (typeof import('node:…'))`)
+            }
+            if (/from\s+['"]bun:test['"]/.test(source)) {
+                offenders.push(`${relative(path)} (bun:test)`)
+            }
+        }
+
+        expect(offenders).toEqual([])
+    })
 })

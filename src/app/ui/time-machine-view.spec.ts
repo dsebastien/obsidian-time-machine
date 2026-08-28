@@ -8,7 +8,7 @@ import { DiffService } from '../services/diff.service'
 import { RestoreService } from '../services/restore.service'
 import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 import { SnapshotCache } from '../services/snapshot-cache'
-import { createRecording, createRecordingEl } from '../../test-dom'
+import { createRecording, createRecordingEl } from '../../../test/dom'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reaches into private view state that has no public accessor
 type ViewInternals = any
@@ -286,9 +286,7 @@ describe('TimeMachineView', () => {
 
         test('shows empty state when all snapshots match current content', async () => {
             const file = createMockFile('note.md')
-            const contentAreaEl = v.contentAreaEl as HTMLElement & {
-                empty: ReturnType<typeof mock>
-            }
+            const contentAreaEl = v.contentAreaEl as unknown as { empty: { calls: number } }
 
             v.session.file = file
             v.session.allSnapshots = [createSnapshot('note.md', 1000, 'same')]
@@ -301,7 +299,7 @@ describe('TimeMachineView', () => {
 
             expect(v.session.snapshots).toHaveLength(0)
             // empty() should have been called to clear before rendering empty state
-            expect(contentAreaEl.empty).toHaveBeenCalled()
+            expect(contentAreaEl.empty.calls).toBeGreaterThan(0)
         })
 
         test('keeps the selection when the filtered count stays the same', async () => {
