@@ -60,7 +60,7 @@ export class NoteExportService {
             }
         }
 
-        new Notice('Time Machine: Could not find a free file name for this version')
+        new Notice('Time Machine: could not find a free file name for this version')
         return null
     }
 }

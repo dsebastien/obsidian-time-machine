@@ -31,7 +31,7 @@ export function registerCommands(plugin: TimeMachinePlugin): void {
 
     plugin.addCommand({
         id: 'force-snapshot',
-        name: 'Force file recovery snapshot for current file',
+        name: 'Force File Recovery snapshot for current file',
         checkCallback: (checking: boolean) => {
             const file = plugin.app.workspace.getActiveFile()
             if (!file) return false

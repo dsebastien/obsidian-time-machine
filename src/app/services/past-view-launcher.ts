@@ -37,7 +37,7 @@ export async function openPastView(
     selection: PastViewSelection = { snapshotId: null, snapshotTimestamp: null }
 ): Promise<void> {
     if (file.extension !== 'md') {
-        new Notice('Time Machine: Only markdown notes have a history view')
+        new Notice('Time Machine: only Markdown notes have a history view')
         return
     }
 

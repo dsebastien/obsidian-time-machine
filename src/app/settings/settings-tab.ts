@@ -73,8 +73,8 @@ export class TimeMachineSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Git integration').setHeading()
 
         new Setting(containerEl)
-            .setName('Enable git integration')
-            .setDesc('Show git commits as snapshots on the timeline (desktop only)')
+            .setName('Enable Git integration')
+            .setDesc('Show Git commits as snapshots on the timeline (desktop only)')
             .addToggle((toggle) => {
                 toggle
                     .setValue(this.plugin.settings.gitIntegrationEnabled)
@@ -87,8 +87,8 @@ export class TimeMachineSettingTab extends PluginSettingTab {
         this.renderGitStatus(containerEl)
 
         new Setting(containerEl)
-            .setName('Maximum git commits')
-            .setDesc('Maximum number of git commits to fetch per file (1-200)')
+            .setName('Maximum Git commits')
+            .setDesc('Maximum number of Git commits to fetch per file (1-200)')
             .addSlider((slider) => {
                 slider
                     .setLimits(1, 200, 1)
@@ -104,7 +104,7 @@ export class TimeMachineSettingTab extends PluginSettingTab {
     renderGitStatus(containerEl: HTMLElement): void {
         const statusSetting = new Setting(containerEl)
             .setName('Git status')
-            .setDesc('Checking git availability...')
+            .setDesc('Checking Git availability...')
 
         if (!Platform.isDesktopApp) {
             statusSetting.setDesc(
@@ -121,12 +121,12 @@ export class TimeMachineSettingTab extends PluginSettingTab {
                     )
                 } else {
                     statusSetting.setDesc(
-                        'Git not detected for this vault. Ensure git is installed and the vault is inside a git repository to see git snapshots.'
+                        'Git not detected for this vault. Ensure Git is installed and the vault is inside a Git repository to see Git snapshots.'
                     )
                 }
             })
             .catch(() => {
-                statusSetting.setDesc('Could not determine git availability.')
+                statusSetting.setDesc('Could not determine Git availability.')
             })
     }
 

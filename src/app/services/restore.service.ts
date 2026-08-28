@@ -21,7 +21,7 @@ export class RestoreService {
         const hunk = diff.hunks[hunkIndex]
         if (!hunk) {
             log('Invalid hunk index', 'error', hunkIndex)
-            new Notice('Time Machine: Could not apply hunk — invalid index')
+            new Notice('Time Machine: could not apply hunk — invalid index')
             return false
         }
 
@@ -64,7 +64,7 @@ export class RestoreService {
 
         const newContent = resultLines.join('\n')
         await app.vault.modify(file, newContent)
-        new Notice('Time Machine: Applied hunk successfully')
+        new Notice('Time Machine: applied hunk successfully')
         log('Applied hunk', 'info', { file: file.path, hunkIndex })
         return true
     }

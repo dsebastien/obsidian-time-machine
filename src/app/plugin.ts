@@ -143,7 +143,7 @@ export class TimeMachinePlugin extends Plugin {
             () => {
                 const file = this.resolveActiveFile()
                 if (!file || file.extension !== 'md') {
-                    new Notice('Time Machine: Open a markdown note first')
+                    new Notice('Time Machine: open a Markdown note first')
                     return
                 }
                 void openPastView(this, file)

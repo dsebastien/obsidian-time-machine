@@ -3,6 +3,16 @@ import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import globals from 'globals'
 import obsidianmd from 'eslint-plugin-obsidianmd'
+// Passing `brands` REPLACES the plugin's default list rather than extending it
+// (see sentenceCaseUtil.js: `options?.brands ?? DEFAULT_BRANDS`). Listing only
+// this plugin's own names would therefore silently strip "Obsidian",
+// "Markdown", "GitHub", "Windows" and the other 42 defaults, and the community
+// catalog reviewer — which runs the plugin's own ruleset — would still accept
+// them, so the loss would only ever show up locally as false positives.
+// Deep path because the package exports only its default plugin object; it is
+// pinned exactly, and a break here is a loud module-resolution error, never a
+// silent shrinking of the list.
+import { DEFAULT_BRANDS } from 'eslint-plugin-obsidianmd/dist/lib/rules/ui/brands.js'
 
 export default tseslint.config(
     eslint.configs.recommended,
@@ -48,7 +58,11 @@ export default tseslint.config(
         },
         rules: {
             '@typescript-eslint/no-require-imports': 'off',
-            '@typescript-eslint/no-explicit-any': 'warn',
+            // The community-plugin reviewer treats both the rule violation
+            // and any `eslint-disable @typescript-eslint/no-explicit-any` as
+            // an ERROR that blocks the scorecard. Catch locally as error,
+            // not warn.
+            '@typescript-eslint/no-explicit-any': 'error',
             '@typescript-eslint/no-unused-vars': [
                 'error',
                 { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
@@ -64,8 +78,32 @@ export default tseslint.config(
             'no-prototype-builtins': 'off',
             // Allow confirm for delete confirmations
             'no-alert': 'off',
-            // Disable sentence case rule - it has false positives for already-correct text
-            'obsidianmd/ui/sentence-case': 'off'
+            // Never disable obsidianmd/* rules here: the community catalog
+            // reviewer runs its own ruleset against the git archive, so a
+            // local disable only hides the finding until submission.
+            // Brand names are the supported escape hatch for sentence-case.
+            'obsidianmd/ui/sentence-case': [
+                'error',
+                {
+                    brands: [
+                        ...DEFAULT_BRANDS,
+                        // This plugin, and the Obsidian surfaces it names.
+                        'Time Machine',
+                        'File Recovery',
+                        // Obsidian's own navigation labels, written the way
+                        // its docs write them: "Settings → Core plugins".
+                        'Settings',
+                        'Core plugins',
+                        'Dataview',
+                        'Personal Knowledge Management',
+                        // Author and funding links.
+                        'Knowii',
+                        'GitHub Sponsors',
+                        'Sébastien Dubois',
+                        'dSebastien'
+                    ]
+                }
+            ]
         }
     }
 )

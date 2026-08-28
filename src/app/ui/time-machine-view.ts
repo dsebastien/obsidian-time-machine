@@ -285,7 +285,7 @@ export class TimeMachineView extends ItemView implements HistoryView {
             this.session.diffBaseContent !== null &&
             currentContent !== this.session.diffBaseContent
         ) {
-            new Notice('Time Machine: The file changed — the diff was refreshed, try again.')
+            new Notice('Time Machine: the file changed — the diff was refreshed, try again.')
             await this.computeAndRenderDiff()
             return
         }

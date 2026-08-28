@@ -527,7 +527,7 @@ export class PastView extends ItemView implements HistoryView {
             this.session.diffBaseContent === null ||
             currentContent !== this.session.diffBaseContent
         ) {
-            new Notice('Time Machine: The file changed — the diff was refreshed, try again.')
+            new Notice('Time Machine: the file changed — the diff was refreshed, try again.')
             await this.renderBody()
             return
         }
@@ -548,10 +548,10 @@ export class PastView extends ItemView implements HistoryView {
 
         try {
             await navigator.clipboard.writeText(snapshot.data)
-            new Notice('Time Machine: Version copied to clipboard')
+            new Notice('Time Machine: version copied to clipboard')
         } catch (error) {
             log('Clipboard write failed', 'error', error)
-            new Notice('Time Machine: Could not copy to the clipboard')
+            new Notice('Time Machine: could not copy to the clipboard')
         }
     }
 
