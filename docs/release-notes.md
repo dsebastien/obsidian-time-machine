@@ -1,5 +1,20 @@
 # Release Notes
 
+## 2.1.0 (2026-09-07)
+
+### Features
+
+- **build:** fail the build on a lockfile the catalog review cannot parse
+- **build:** make the rule floor check that it is still wired in
+- **build:** refuse commits that loosen the rules instead of fixing the finding
+- **plugin:** add deterministic Markdown history rendering [#12](https://github.com/dsebastien/obsidian-time-machine/issues/12)
+- **plugin:** export and freeze note version history [#12](https://github.com/dsebastien/obsidian-time-machine/issues/12)
+
+### Bug Fixes
+
+- **deps:** patch fast-uri security advisories
+- **plugin:** support vaults linked to bare Git repositories
+
 ## 2.0.0 (2026-08-28)
 
 ### ⚠ BREAKING CHANGES

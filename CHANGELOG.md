@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0](https://github.com/dsebastien/obsidian-time-machine/compare/2.0.0...2.1.0) (2026-09-07)
+
+### Features
+
+* **build:** fail the build on a lockfile the catalog review cannot parse ([4f41cf8](https://github.com/dsebastien/obsidian-time-machine/commit/4f41cf8a6fb27b3fbc6f40bce2230b61a6a10683))
+* **build:** make the rule floor check that it is still wired in ([04d150b](https://github.com/dsebastien/obsidian-time-machine/commit/04d150b37a775dea61c64be5f0c94743a0b9deea))
+* **build:** refuse commits that loosen the rules instead of fixing the finding ([b396043](https://github.com/dsebastien/obsidian-time-machine/commit/b3960432627eeb0262352caaefca8c3ef294899c))
+* **plugin:** add deterministic Markdown history rendering ([0c83df0](https://github.com/dsebastien/obsidian-time-machine/commit/0c83df0ea47c5d0a58d0421ac9c512a60f67bb89)), closes [#10](https://github.com/dsebastien/obsidian-time-machine/issues/10) [#12](https://github.com/dsebastien/obsidian-time-machine/issues/12)
+* **plugin:** export and freeze note version history ([d0695cc](https://github.com/dsebastien/obsidian-time-machine/commit/d0695ccf7f16ee01883aa84a247d9908aac3f4da)), closes [#10](https://github.com/dsebastien/obsidian-time-machine/issues/10) [#12](https://github.com/dsebastien/obsidian-time-machine/issues/12)
+
+### Bug Fixes
+
+* **deps:** patch fast-uri security advisories ([72138e4](https://github.com/dsebastien/obsidian-time-machine/commit/72138e40266902b74c61a4968adce500729a9a2a))
+* **plugin:** support vaults linked to bare Git repositories ([8544e18](https://github.com/dsebastien/obsidian-time-machine/commit/8544e18311b218ccf103f92a3c28afa8976dff00)), closes [#15](https://github.com/dsebastien/obsidian-time-machine/issues/15)
+
 ## [2.0.0](https://github.com/dsebastien/obsidian-time-machine/compare/1.5.2...2.0.0) (2026-08-28)
 
 ### ⚠ BREAKING CHANGES
@@ -204,6 +219,7 @@ patterns that no test can otherwise catch, and documents the traps in AGENTS.md.
 * **all:** fied the release workflow to name the tags correctly ([95aa6ff](https://github.com/dsebastien/obsidian-time-machine/commit/95aa6ffd40e718d055e24e1f052ed374e171376b))
 * **all:** fix image url ([1a0086b](https://github.com/dsebastien/obsidian-time-machine/commit/1a0086b1982b8da1f6e3c3135f27dcd9bb2ff787))
 * **all:** use console.debug instead of console.log ([09306e4](https://github.com/dsebastien/obsidian-time-machine/commit/09306e492c81437dff10dfe8b3b5e5734be1382a))
+
 
 
 
