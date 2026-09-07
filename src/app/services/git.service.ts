@@ -46,6 +46,13 @@ interface ChildProcessLike {
     ) => void
 }
 
+interface GitRepositoryContext {
+    basePath: string
+    args: string[]
+    prefix: string
+    bare: boolean
+}
+
 export class GitService {
     /**
      * Checks if git integration can work in the current environment:
@@ -53,17 +60,7 @@ export class GitService {
      * - Must be inside a git repository
      */
     static async isAvailable(app: App): Promise<boolean> {
-        if (!Platform.isDesktopApp) return false
-
-        const basePath = this.getVaultBasePath(app)
-        if (!basePath) return false
-
-        try {
-            const result = await this.exec(['rev-parse', '--is-inside-work-tree'], basePath)
-            return result.trim() === 'true'
-        } catch {
-            return false
-        }
+        return (await this.getRepositoryContext(app)) !== null
     }
 
     /**
@@ -74,44 +71,55 @@ export class GitService {
         return app.vault.adapter.getBasePath()
     }
 
-    /**
-     * Converts a vault-relative file path to a git-relative path.
-     * Handles vaults that are subdirectories of a git repo.
-     */
-    static async getGitRelativePath(app: App, vaultFilePath: string): Promise<string | null> {
+    private static async getRepositoryContext(app: App): Promise<GitRepositoryContext | null> {
+        if (!Platform.isDesktopApp) return null
+
         const basePath = this.getVaultBasePath(app)
         if (!basePath) return null
 
         try {
-            const topLevel = (await this.exec(['rev-parse', '--show-toplevel'], basePath)).trim()
+            const [insideWorkTree, bare, prefix = ''] = (
+                await this.exec(
+                    ['rev-parse', '--is-inside-work-tree', '--is-bare-repository', '--show-prefix'],
+                    basePath
+                )
+            ).split(/\r?\n/)
 
-            // If vault root IS the repo root, vault-relative = git-relative
-            if (this.normalizePath(basePath) === this.normalizePath(topLevel)) {
-                return vaultFilePath
-            }
+            if (insideWorkTree === 'true') return { basePath, args: [], prefix, bare: false }
+            if (bare !== 'true') return null
 
-            // Vault is a subdirectory of the repo
-            const relative = this.normalizePath(basePath).slice(
-                this.normalizePath(topLevel).length + 1
-            )
-            return relative ? `${relative}/${vaultFilePath}` : vaultFilePath
+            // A bare repository needs an explicit work tree. Let Git validate
+            // the vault's .git entry; do not reinterpret a bare directory as a vault.
+            await this.exec(['rev-parse', '--resolve-git-dir', '.git'], basePath)
+            return { basePath, args: [`--work-tree=${basePath}`], prefix: '', bare: true }
         } catch {
             return null
         }
     }
 
     /**
+     * Converts a vault-relative file path to a git-relative path.
+     * Handles vaults that are subdirectories of a git repo.
+     */
+    static async getGitRelativePath(app: App, vaultFilePath: string): Promise<string | null> {
+        const repository = await this.getRepositoryContext(app)
+        return repository ? `${repository.prefix}${vaultFilePath}` : null
+    }
+
+    /**
      * Returns whether a file is tracked by git.
      */
     static async isFileTracked(app: App, vaultFilePath: string): Promise<boolean> {
-        const basePath = this.getVaultBasePath(app)
-        if (!basePath) return false
-
-        const gitPath = await this.getGitRelativePath(app, vaultFilePath)
-        if (!gitPath) return false
+        if (!vaultFilePath) return false
+        const repository = await this.getRepositoryContext(app)
+        if (!repository) return false
 
         try {
-            await this.exec(['ls-files', '--error-unmatch', '--', gitPath], basePath)
+            // Bare repositories may have no index; committed files are still tracked.
+            const command = repository.bare
+                ? ['cat-file', '-e', `HEAD:${vaultFilePath}`]
+                : ['ls-files', '--error-unmatch', '--', vaultFilePath]
+            await this.exec([...repository.args, ...command], repository.basePath)
             return true
         } catch {
             return false
@@ -127,24 +135,23 @@ export class GitService {
         vaultFilePath: string,
         limit: number
     ): Promise<GitCommitInfo[]> {
-        const basePath = this.getVaultBasePath(app)
-        if (!basePath) return []
-
-        const gitPath = await this.getGitRelativePath(app, vaultFilePath)
-        if (!gitPath) return []
+        if (!vaultFilePath) return []
+        const repository = await this.getRepositoryContext(app)
+        if (!repository) return []
 
         try {
             const output = await this.exec(
                 [
+                    ...repository.args,
                     'log',
                     '--follow',
                     `--format=%H%n%h%n%an%n%at%n%s`,
                     `-n`,
                     String(limit),
                     '--',
-                    gitPath
+                    vaultFilePath
                 ],
-                basePath
+                repository.basePath
             )
 
             return this.parseCommitLog(output)
@@ -162,14 +169,15 @@ export class GitService {
         commitHash: string,
         vaultFilePath: string
     ): Promise<string | null> {
-        const basePath = this.getVaultBasePath(app)
-        if (!basePath) return null
-
-        const gitPath = await this.getGitRelativePath(app, vaultFilePath)
-        if (!gitPath) return null
+        if (!vaultFilePath) return null
+        const repository = await this.getRepositoryContext(app)
+        if (!repository) return null
 
         try {
-            return await this.exec(['show', `${commitHash}:${gitPath}`], basePath)
+            return await this.exec(
+                [...repository.args, 'show', `${commitHash}:${repository.prefix}${vaultFilePath}`],
+                repository.basePath
+            )
         } catch {
             return null
         }
@@ -238,9 +246,5 @@ export class GitService {
                 }
             )
         })
-    }
-
-    private static normalizePath(p: string): string {
-        return p.replace(/\\/g, '/').replace(/\/+$/, '')
     }
 }

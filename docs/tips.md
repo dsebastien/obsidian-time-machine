@@ -48,7 +48,8 @@ Go to **Settings -> Core plugins** and enable **File Recovery**. This message on
 ### No git snapshots appearing
 
 - Make sure git is installed and available on your system (`git --version` in a terminal)
-- Verify your vault is inside a git repository (look for a `.git` folder)
+- Verify your vault is inside a Git repository (a `.git` folder **or pointer file**). For a
+  sibling bare repository, see [External and bare Git repositories](configuration.md#external-and-bare-git-repositories).
 - Check that the file has been committed at least once
 - Confirm that "Enable Git integration" is turned on in the Time Machine settings
 - Git integration is desktop-only -- it does not work on mobile

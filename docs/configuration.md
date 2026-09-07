@@ -36,6 +36,39 @@ When enabled, Time Machine automatically detects whether the vault is inside a g
 
 The plugin never creates commits, pushes, pulls, or modifies the git repository in any way. It is strictly read-only.
 
+### External and bare Git repositories
+
+On desktop, Time Machine also supports a vault-root `.git` **file** pointing to an external
+Git directory, including a bare repository. This is useful when LiveSync syncs the vault
+while Git repository data stays in a sibling folder.
+
+For example:
+
+```text
+Obsidian/
+  Obsidian-Vault/
+    .git
+    Note.md
+  Vault.git/
+```
+
+The `.git` file can contain a relative pointer:
+
+```text
+gitdir: ../Vault.git
+```
+
+An absolute path is supported too. Use your existing Git setup; Time Machine does not create
+or convert repositories. No extra plugin setting is needed beyond **Enable Git integration**.
+The vault must have its own valid `.git` entry for bare-repository support, and notes must
+exist in the repository's `HEAD` to be treated as tracked when there is no index.
+
+Normal repositories, vaults nested within a normal repository, separate Git directories and
+linked worktrees remain supported. A bare repository directory **by itself** is not a note
+vault. Time Machine supplies work-tree context to its read commands without changing
+`core.bare`, repository configuration, commits or the index. This support applies to the
+timeline, past view, and Markdown history export/freeze.
+
 ## Past view
 
 | Setting                      | Default | What it does                                                              |
