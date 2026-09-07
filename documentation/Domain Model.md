@@ -84,3 +84,10 @@ Shared state behind a history view.
 - `pastViewEnabled: boolean` — past view and its entry points available (default: true)
 - `pastViewDefaultShowDiff: boolean` — past view opens on the diff (default: false)
 - `pastViewExecuteBlocks: boolean` — allow executable blocks in old versions to run (default: false)
+
+## Durable history
+
+- `HistoryExportOptions`: `format` (`diffs` / `full`), `maxVersions` (positive integer or `null` for all available).
+- `HistoryExport`: deterministic `markdown`, `versionCount`, `availableCount` (after stripping/dedup), UTF-8 `bytes`.
+- `PreparedHistory`: rendered history plus captured source `path` and exact `sourceContent` for confirmed atomic writes.
+- Frozen section: one reserved start/end marker pair outside code fences. Replaced in place; excluded from future exports before content deduplication.

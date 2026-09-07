@@ -112,4 +112,10 @@ Concurrent snapshot fetches for the same (path, git settings) share one request 
 
 ## Note Creation
 
-"Open this version as a new note" is the only place the plugin creates a file. It writes `<basename> (yyyy-MM-dd HH-mm).md` beside the original with no prompt. `vault.create` rejects when the path exists, so collisions are handled by catching and retrying with a numeric suffix rather than checking existence first — a pre-check races against anything else writing to the vault.
+"Open this version as a new note" writes `<basename> (yyyy-MM-dd HH-mm).md` beside the original with no prompt. History export also creates a note, named `<basename> (history).md`, after the user chooses export options. `vault.create` rejects when the path exists, so collisions are handled by catching and retrying with a numeric suffix rather than checking existence first — a pre-check races against anything else writing to the vault.
+
+## Durable History
+
+Approved for #10 and #12: two commands operate on the current Markdown note using one deterministic renderer. Export creates a separate note without modifying the source. Freeze inserts or replaces a marked `## Version history` section in the source only after explicit confirmation. Git remains read-only; history viewing never writes notes.
+
+Both commands offer diffs (default) or full versions and an adjustable version limit. Export defaults to all available snapshots within existing Git settings; freeze defaults to the latest 20. Source metadata remains explicit, including the absence of author information in File Recovery snapshots. Snapshots remain newest-first and content-deduplicated. Previously generated sections are excluded before rendering and deduplication, so history cannot recursively embed itself. Malformed or ambiguous markers must fail without writing; changes to the source while preparing/confirming a freeze must not be overwritten.
