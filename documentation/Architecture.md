@@ -16,11 +16,16 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 
 - **FileRecoveryService**: Reads from `app.internalPlugins.getEnabledPluginById('file-recovery').db` IndexedDB
 - **GitService**: Desktop-only git operations via `child_process.execFile`. Checks availability, fetches commit history, retrieves file content at specific commits. All methods static, fail gracefully.
+- Git context comes from `rev-parse`: `--show-prefix` addresses blobs for nested vaults;
+  `log`/`ls-files` use vault-relative pathspecs from the vault cwd. A bare repo requires a
+  valid vault-root `.git` entry and receives command-local `--work-tree`; tracking uses
+  `HEAD` rather than an index that may not exist. No Git configuration is changed.
 - **SnapshotService**: Orchestrator that fetches from both sources (file-recovery + git), converts to unified `Snapshot` type, and merges chronologically.
 - **DiffService**: Wraps `diff` (jsdiff) `structuredPatch` for computing diffs
 - **RestoreService**: Full version restore via `vault.modify()` + selective hunk restoration via line manipulation
 - **SnapshotCache**: coalesces concurrent snapshot fetches per (path, git settings). Several open views on one note would otherwise each run one `git show` per commit.
-- **NoteExportService**: writes a historical version out as a new note beside the original. The only place the plugin creates a file.
+- **NoteExportService / createSiblingNote**: writes a historical version or a history export beside the original; shared collision-safe creation retries only name collisions.
+- **history-export.service.ts**: orchestrates durable export/freeze, capturing the source before fetching history. Freeze requires confirmation and an atomic `vault.process` content/path guard. Unchanged output is not written again.
 - **past-view-launcher.ts**: `openPastView` — resolves the root leaf showing the file, splits before it, reuses an existing past view (detected via `leaf.getViewState()`, since deferred leaves expose a `DeferredView`).
 
 ### Domain
@@ -31,6 +36,8 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 - **timeline-layout.ts**: pure layout maths for the timeline (proportional positioning, clustering, tier selection, keyboard stepping). No DOM, so it is directly unit-testable.
 - **markdown-safety.ts**: `neutraliseExecutableBlocks` — relabels executable fenced blocks to `text` before a historical version reaches `MarkdownRenderer`, so old `dataviewjs`/`dataview` blocks display as source instead of executing.
 - **past-view-state.ts**: `PastViewState` and its normaliser for untrusted workspace-layout state.
+- **history-export.ts**: deterministic, newest-first Markdown renderer shared by export and freeze; source metadata, bounded diffs/full source, safe variable-length fences, limits and post-stripping dedup.
+- **frozen-history.ts**: reserved standalone comment markers, fence-aware scanning, strict ambiguity rejection, byte-preserving source extraction and in-place replacement.
 
 ### Types
 
@@ -50,6 +57,7 @@ Two views, one shared core. Both implement `HistoryView` so the plugin routes to
 - **renderComparisonModeControl / renderRestoreFullButton**: shared header controls.
 - **EmptyState**: Contextual empty messages
 - **ConfirmModal** (`components/confirm-modal.ts`): shared confirmation; settles exactly once, so an Escape dismissal resolves as cancel.
+- **HistoryExportModal**: per-operation format/limit controls, progress/errors and explicit freeze confirmation. Commands capture the target note and close outstanding dialogs on unload. No new persisted settings.
 
 ## Data Flow
 

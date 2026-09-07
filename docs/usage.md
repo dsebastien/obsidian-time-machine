@@ -44,6 +44,8 @@ This is deliberate. Rendering an old version would otherwise execute that code a
 | **Time Machine: Open view**                                     | Opens the Time Machine panel in the sidebar                                                    |
 | **Time Machine: Compare versions side by side**                 | Opens the side-by-side view for the current note, beside the editor                            |
 | **Time Machine: Force File Recovery snapshot for current file** | Immediately creates a File Recovery snapshot for the active file, bypassing the interval timer |
+| **Time Machine: Export version history to Markdown**            | Saves recorded history as a separate Markdown note beside the current note                     |
+| **Time Machine: Freeze version history into current note**      | Inserts or replaces a static history section in the current note, after confirmation           |
 
 Only markdown notes have a history, so **Compare versions side by side** does not appear unless a markdown note is active. It is also hidden entirely when the side-by-side view is turned off in settings.
 
@@ -56,6 +58,84 @@ Besides the command palette, the side-by-side view can be opened from:
 - The **Side by side** button in the Time Machine panel's header, which carries your current selection across so you do not lose your place
 
 The ribbon icon disappears when the side-by-side view is disabled in settings.
+
+## Saving history as Markdown
+
+Both history commands work on the current Markdown note, independently of whether the
+side-by-side view is enabled. They produce plain Markdown that remains readable without
+Time Machine, syncs as text, and can be published or committed to Git.
+
+### Export to a separate note
+
+1. Open the note whose history you want to save.
+2. Run **Time Machine: Export version history to Markdown** from the command palette.
+3. Choose **Content**: **Changes between versions** (default) or **Full versions**.
+4. Set **Maximum versions** to a positive whole number, or leave it as **all**.
+5. Select **Export**.
+
+The export appears beside your note as `My note (history).md`. If that name is taken,
+Time Machine uses `My note (history) 2.md`, then the next free numeric suffix. Existing
+files and the source note are never overwritten. Repeating an export creates a new file.
+
+### Freeze history inside the source note
+
+1. Run **Time Machine: Freeze version history into current note**.
+2. Choose the content format and version limit. The default is the **latest 20** unique
+   recorded versions; use **all** to include every available version.
+3. Select **Continue**, then review the note path, version count and output size.
+4. Select **Freeze history** to confirm, or **Cancel** to leave the note unchanged.
+
+This adds a static **Version history** section at the end of your note. Repeating the
+command replaces the generated section in place rather than appending another one.
+Text outside that section is preserved, including a manually written heading with the same
+name. Edits **inside** the generated section are replaced next time.
+
+Time Machine identifies its section using standalone comment markers:
+
+```text
+<!-- time-machine:history:start -->
+## Version history
+...
+<!-- time-machine:history:end -->
+```
+
+Keep both markers intact. A missing, reversed or duplicate marker stops the operation without
+writing; repair the markers before trying again. Marker examples inside code fences are
+not treated as generated sections. Close unfinished code fences, raw HTML blocks and
+frontmatter before inserting history.
+If you edit or rename the note while history is being prepared or confirmed, freezing stops:
+run the command again against the updated note.
+
+Freezing is an intentional note edit and can create a File Recovery snapshot. Previously
+generated history is removed from snapshot content **before** deduplication and export, so
+the section cannot recursively contain older copies of itself. It does not update automatically.
+
+### What the output contains
+
+- Entries are newest-first, with UTC timestamps and their source. Git entries include the
+  author, full commit hash and commit message's first line. File Recovery does not record an
+  author; the output says so explicitly.
+- **Changes between versions** shows each version's changes from the next older included
+  version, with three context lines. The oldest included version is a baseline from an empty
+  note. The sidebar's **Compare with** setting does not affect exports.
+- **Full versions** includes each version's Markdown source in a code block. Historical code,
+  embeds and queries are displayed as source, not executed or resolved against today's vault.
+- Duplicate content is removed, keeping the newest snapshot. Unlike the timeline, exports
+  **include** recorded versions that match the current note. Unsnapshotted current edits
+  are not added; use **Force File Recovery snapshot for current file** first if needed.
+- Line endings in exported history are normalized to LF. Identical inputs and options produce
+  identical Markdown; there is no changing "exported at" timestamp.
+
+**Limits:** "all" means all retained snapshots returned by the enabled, available sources,
+not every edit ever made. File Recovery retention and **Maximum git commits** still apply;
+Git is desktop-only. Output is limited to 10 MiB, including the entire resulting note when
+freezing. Choose fewer versions if the limit is exceeded, or **Full versions** if computing
+a diff is too complex. Empty history and write failures are reported rather than creating
+empty or partial documents.
+
+These exports document the history available locally. They are **not cryptographic proof
+of authorship** or a guaranteed complete audit log. Neither command commits, stages or otherwise
+changes Git repository data.
 
 ## Browsing snapshots
 

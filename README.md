@@ -19,8 +19,11 @@ Time Machine turns Obsidian's built-in File Recovery snapshots and git commits i
 - **Full version restore** -- roll back your entire note to any previous snapshot
 - **Selective restore** -- restore just the specific changes you want, leaving the rest untouched
 - **Git integration** -- automatically shows git commits alongside File Recovery snapshots on the same timeline (desktop only)
+- **External Git repositories** -- supports vault-root `.git` pointers to sibling bare repositories, plus linked worktrees and nested vaults
 - **Source indicators** -- each snapshot shows whether it comes from File Recovery or a git commit
 - **On-demand snapshots** -- force-create a File Recovery snapshot whenever you want, without waiting for the timer
+- **Markdown history export** -- save recorded history as a separate note, with diffs or full versions and source metadata
+- **Frozen history** -- insert a durable history section into the current note after confirmation; refresh it without duplicating the section
 - **Auto-sync** -- the view updates automatically when you switch between files
 - **Smart filtering** -- only shows snapshots that actually differ from your current content, with duplicates removed
 - **Desktop and mobile** -- works wherever Obsidian runs (git features are desktop-only)
@@ -82,7 +85,7 @@ You don't need to do anything special -- just write your notes as usual. Time Ma
 
 ## Documentation
 
-- [Usage guide](docs/usage.md) -- how to browse, compare, and restore snapshots
+- [Usage guide](docs/usage.md) -- browse, compare, restore, export, and freeze history
 - [Configuration](docs/configuration.md) -- plugin settings and File Recovery configuration
 - [Tips and troubleshooting](docs/tips.md) -- common questions and solutions
 

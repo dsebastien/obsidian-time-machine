@@ -40,13 +40,20 @@ The settings tab includes:
 
 ## Commands
 
-| ID               | Name                                          | Notes                                                         |
-| ---------------- | --------------------------------------------- | ------------------------------------------------------------- |
-| `open-view`      | Open view                                     | Sidebar history view                                          |
-| `open-past-view` | Open past view for current note               | Hidden when `pastViewEnabled` is off or the note is not `.md` |
-| `force-snapshot` | Force file recovery snapshot for current file | Hidden when no file is active                                 |
+| ID                       | Name                                          | Notes                                                                    |
+| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------------ |
+| `open-view`              | Open view                                     | Sidebar history view                                                     |
+| `open-past-view`         | Open past view for current note               | Hidden when `pastViewEnabled` is off or the note is not `.md`            |
+| `force-snapshot`         | Force file recovery snapshot for current file | Hidden when no file is active                                            |
+| `export-version-history` | Export version history to Markdown            | Current Markdown note; diffs/all available versions by default           |
+| `freeze-version-history` | Freeze version history into current note      | Current Markdown note; diffs/latest 20 by default; explicit confirmation |
 
 Command names must not contain the plugin name — Obsidian already prefixes them with it in the palette.
+
+History export/freeze options are per-operation, not persisted settings. Both offer diffs or
+full source, and a positive version limit or `all`. Existing Git settings apply. Exported
+Markdown and resulting frozen notes are capped at 10 MiB. See `docs/usage.md` for marker
+semantics, limits, safety checks and user workflows.
 
 ## Other entry points for the past view
 

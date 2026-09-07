@@ -2,8 +2,10 @@ import { Notice } from 'obsidian'
 import type { TimeMachinePlugin } from '../plugin'
 import { FileRecoveryService } from '../services/file-recovery.service'
 import { openPastView } from '../services/past-view-launcher'
+import { registerHistoryCommands } from './history-commands'
 
 export function registerCommands(plugin: TimeMachinePlugin): void {
+    registerHistoryCommands(plugin)
     plugin.addCommand({
         id: 'open-view',
         name: 'Open view',
