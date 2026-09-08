@@ -94,9 +94,9 @@
         "picomatch": "2.3.2"
     },
     "dependencies": {
-        "date-fns": "4.1.0",
+        "date-fns": "4.4.0",
         "diff": "8.0.3",
-        "immer": "11.0.1",
-        "zod": "^4.1.13"
+        "immer": "11.1.18",
+        "zod": "^4.5.4"
     }
 }
