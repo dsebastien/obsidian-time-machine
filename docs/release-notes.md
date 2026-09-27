@@ -1,5 +1,13 @@
 # Release Notes
 
+## 2.1.1 (2026-09-27)
+
+### Bug Fixes
+
+- **build:** exclude bun-types alongside @types/bun from the release-age gate
+- **build:** harden the release path from the template
+- **build:** rebuild versions.json from the published releases
+
 ## 2.1.0 (2026-09-07)
 
 ### Features
