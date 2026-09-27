@@ -147,9 +147,10 @@ export class PastView extends ItemView implements HistoryView {
 
     // --- lifecycle ---------------------------------------------------------
 
-    override async onOpen(): Promise<void> {
+    // Nothing here awaits; the base signature still demands a promise.
+    override onOpen(): Promise<void> {
         const container = this.containerEl.children[1]
-        if (!container) return
+        if (!container) return Promise.resolve()
 
         container.empty()
         const root = container as HTMLElement
@@ -170,6 +171,7 @@ export class PastView extends ItemView implements HistoryView {
         } else {
             renderEmptyState(this.bodyEl, 'no-file')
         }
+        return Promise.resolve()
     }
 
     override async onClose(): Promise<void> {
