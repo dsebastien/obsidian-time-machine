@@ -64,9 +64,9 @@ describe('GitService', () => {
     let wasDesktop: boolean
 
     beforeEach(() => {
-        originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
+        originalWindow = Object.getOwnPropertyDescriptor(self, 'window')
         wasDesktop = Platform.isDesktopApp
-        Object.defineProperty(globalThis, 'window', {
+        Object.defineProperty(self, 'window', {
             configurable: true,
             value: { require }
         })
@@ -76,9 +76,9 @@ describe('GitService', () => {
     afterEach(async () => {
         Platform.isDesktopApp = wasDesktop
         if (originalWindow) {
-            Object.defineProperty(globalThis, 'window', originalWindow)
+            Object.defineProperty(self, 'window', originalWindow)
         } else {
-            Reflect.deleteProperty(globalThis, 'window')
+            Reflect.deleteProperty(self, 'window')
         }
         for (const path of fixturePaths.splice(0)) {
             await $`rm -rf ${path}`.quiet()
@@ -131,7 +131,7 @@ describe('GitService', () => {
                 git(fixture, 'init', '--quiet', '--bare')
             } else if (scenario === 'mobile') {
                 Platform.isDesktopApp = false
-                Object.defineProperty(globalThis, 'window', {
+                Object.defineProperty(self, 'window', {
                     configurable: true,
                     get: () => {
                         runtimeLoads++
@@ -139,7 +139,7 @@ describe('GitService', () => {
                     }
                 })
             } else {
-                Object.defineProperty(globalThis, 'window', {
+                Object.defineProperty(self, 'window', {
                     configurable: true,
                     value: {}
                 })

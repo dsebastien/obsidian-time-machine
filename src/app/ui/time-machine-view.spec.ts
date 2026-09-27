@@ -1,21 +1,57 @@
-import { describe, expect, test, beforeEach, mock, spyOn, afterEach } from 'bun:test'
-import type { TFile, WorkspaceLeaf } from 'obsidian'
+import { describe, expect, test, beforeEach, mock, spyOn, afterEach, type Mock } from 'bun:test'
+import { TFile, type WorkspaceLeaf } from 'obsidian'
 import { TimeMachineView } from './time-machine-view'
 import type { TimeMachinePlugin } from '../plugin'
 import type { Snapshot } from '../types/snapshot.intf'
 import { SnapshotService } from '../services/snapshot.service'
 import { DiffService } from '../services/diff.service'
 import { RestoreService } from '../services/restore.service'
-import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
+import {
+    DEFAULT_SETTINGS,
+    type DiffComparisonMode,
+    type PluginSettings
+} from '../types/plugin-settings.intf'
 import { SnapshotCache } from '../services/snapshot-cache'
-import { createRecording, createRecordingEl } from '../../../test/dom'
+import type { SnapshotSession } from '../domain/snapshot-session'
+import { createRecording, createRecordingEl, type Recording } from '../../../test/dom'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- reaches into private view state that has no public accessor
-type ViewInternals = any
+/** The `app` double installed by `createView`. */
+interface MockApp {
+    vault: { read: Mock<() => Promise<string>> }
+    internalPlugins: {
+        getEnabledPluginById: () => { db: object; options: { intervalMinutes: number } }
+    }
+}
+
+/**
+ * The private view members the specs reach into, with the class's own types
+ * where the spec uses real values and the double's type where it installs a
+ * stand-in (`app`, `plugin`, `diffViewer`). Reached through
+ * `view as unknown as ViewInternals`.
+ */
+interface ViewInternals {
+    /** Spec-only: the recording behind the mock header and content elements. */
+    rec: Recording
+    tmHeaderEl: HTMLElement
+    contentAreaEl: HTMLElement
+    app: MockApp
+    session: SnapshotSession
+    plugin: {
+        settings: PluginSettings
+        setComparisonMode: Mock<(mode: DiffComparisonMode) => Promise<void>>
+    }
+    diffViewer: { render: Mock<(...args: unknown[]) => void> } | null
+    renderContent(): void
+    computeAndRenderDiff(): Promise<void>
+    handleRestoreHunk(hunkIndex: number): Promise<void>
+}
+
+function internals(view: TimeMachineView): ViewInternals {
+    return view as unknown as ViewInternals
+}
 
 function createMockFile(path: string, name?: string): TFile {
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
-    return { path, name: name ?? path.split('/').pop() ?? path } as unknown as TFile
+    return Object.assign(new TFile(), { path, name: name ?? path.split('/').pop() ?? path })
 }
 
 function createSnapshot(
@@ -60,7 +96,7 @@ function createView(): TimeMachineView {
     } as unknown as TimeMachinePlugin
 
     const view = new TimeMachineView(mockLeaf, mockPlugin)
-    const v: ViewInternals = view
+    const v = internals(view)
 
     // Set up internal DOM elements that onOpen would create
     const rec = createRecording()
@@ -71,7 +107,7 @@ function createView(): TimeMachineView {
     // Set up app mock
     v.app = {
         vault: {
-            read: mock(async () => '')
+            read: mock(() => Promise.resolve(''))
         },
         internalPlugins: {
             getEnabledPluginById: () => ({
@@ -85,8 +121,7 @@ function createView(): TimeMachineView {
 }
 
 // Spy references for cleanup
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- bun's spyOn return type widens to any; the alias keeps call sites readable
-let getSnapshotsSpy: ReturnType<typeof spyOn> | null = null
+let getSnapshotsSpy: Mock<typeof SnapshotService.getSnapshots> | null = null
 
 afterEach(() => {
     if (getSnapshotsSpy) {
@@ -127,7 +162,7 @@ describe('TimeMachineView', () => {
     describe('updateForFile', () => {
         test('caches all snapshots in allSnapshots before filtering', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
             const file = createMockFile('note.md')
             const currentContent = 'current content'
 
@@ -138,23 +173,23 @@ describe('TimeMachineView', () => {
             ]
 
             getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue(snapshots)
-            v.app.vault.read = mock(async () => currentContent)
+            v.app.vault.read = mock(() => Promise.resolve(currentContent))
 
             await view.updateForFile(file)
 
             // allSnapshots should have all 3
-            const allSnapshots = v.session.allSnapshots as Snapshot[]
+            const allSnapshots = v.session.allSnapshots
             expect(allSnapshots).toHaveLength(3)
 
             // snapshots (filtered) should exclude the one matching current content
-            const filteredSnapshots = v.session.snapshots as Snapshot[]
+            const filteredSnapshots = v.session.snapshots
             expect(filteredSnapshots).toHaveLength(2)
             expect(filteredSnapshots.every((s: Snapshot) => s.data !== currentContent)).toBe(true)
         })
 
         test('clears allSnapshots when file is null', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
 
             v.session.allSnapshots = [createSnapshot('x.md', 1000, 'data')]
             v.session.snapshots = [createSnapshot('x.md', 1000, 'data')]
@@ -167,7 +202,7 @@ describe('TimeMachineView', () => {
 
         test('sets allSnapshots to empty on fetch error', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
 
             getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockRejectedValue(
                 new Error('fetch error')
@@ -181,7 +216,7 @@ describe('TimeMachineView', () => {
 
         test('handles mixed git and file-recovery snapshots', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
             const file = createMockFile('note.md')
 
             const snapshots = [
@@ -191,7 +226,7 @@ describe('TimeMachineView', () => {
             ]
 
             getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockResolvedValue(snapshots)
-            v.app.vault.read = mock(async () => 'different content')
+            v.app.vault.read = mock(() => Promise.resolve('different content'))
 
             await view.updateForFile(file)
 
@@ -203,11 +238,11 @@ describe('TimeMachineView', () => {
     describe('refreshCurrentContent', () => {
         let view: TimeMachineView
         let v: ViewInternals
-        let vaultRead: ReturnType<typeof mock>
+        let vaultRead: Mock<() => Promise<string>>
 
         beforeEach(() => {
             view = createView()
-            v = view
+            v = internals(view)
             vaultRead = v.app.vault.read
         })
 
@@ -256,7 +291,7 @@ describe('TimeMachineView', () => {
             expect(v.session.allSnapshots).toHaveLength(3)
 
             // Filtered snapshots should exclude the matching one
-            const filtered = v.session.snapshots as Snapshot[]
+            const filtered = v.session.snapshots
             expect(filtered).toHaveLength(2)
             expect(filtered.every((s: Snapshot) => s.data !== 'version2')).toBe(true)
         })
@@ -279,7 +314,7 @@ describe('TimeMachineView', () => {
             await view.refreshCurrentContent()
 
             // Only v2 remains after filtering
-            const filtered = v.session.snapshots as Snapshot[]
+            const filtered = v.session.snapshots
             expect(filtered).toHaveLength(1)
             expect(filtered[0]!.data).toBe('v2')
         })
@@ -327,9 +362,9 @@ describe('TimeMachineView', () => {
     describe('diff comparison mode', () => {
         function setupForDiff(view: TimeMachineView): {
             v: ViewInternals
-            render: ReturnType<typeof mock>
+            render: Mock<(...args: unknown[]) => void>
         } {
-            const v: ViewInternals = view
+            const v = internals(view)
             v.session.file = createMockFile('note.md')
             // Newest first: [0]=v3, [1]=v2, [2]=v1
             v.session.snapshots = [
@@ -337,9 +372,9 @@ describe('TimeMachineView', () => {
                 createSnapshot('note.md', 2000, 'v2'),
                 createSnapshot('note.md', 1000, 'v1')
             ]
-            const render = mock(() => {})
+            const render = mock((..._args: unknown[]) => {})
             v.diffViewer = { render }
-            v.app.vault.read = mock(async () => 'current-content')
+            v.app.vault.read = mock(() => Promise.resolve('current-content'))
             return { v, render }
         }
 
@@ -404,7 +439,7 @@ describe('TimeMachineView', () => {
             v.session.select((v.session.snapshots[0] as Snapshot).id)
 
             v.renderContent()
-            await new Promise((resolve) => setTimeout(resolve, 0))
+            await new Promise((resolve) => window.setTimeout(resolve, 0))
 
             const nextBtn = v.rec.clicksByClass.get('tm-compare-mode-btn')
             expect(nextBtn).toBeDefined()
@@ -421,7 +456,7 @@ describe('TimeMachineView', () => {
             const computeSpy = spyOn(DiffService, 'computeDiff')
             v.plugin.settings.diffComparisonMode = 'next'
             view.onComparisonModeChanged()
-            await new Promise((resolve) => setTimeout(resolve, 0))
+            await new Promise((resolve) => window.setTimeout(resolve, 0))
 
             expect(computeSpy).toHaveBeenCalled()
             computeSpy.mockRestore()
@@ -433,7 +468,7 @@ describe('TimeMachineView', () => {
             v.plugin.settings.diffComparisonMode = 'next'
             v.session.select((v.session.snapshots[1] as Snapshot).id)
 
-            const vaultRead = v.app.vault.read as ReturnType<typeof mock>
+            const vaultRead = v.app.vault.read
             await v.handleRestoreHunk(0)
 
             // Bails out before even reading the current file
@@ -444,7 +479,7 @@ describe('TimeMachineView', () => {
     describe('onClose', () => {
         test('clears the session file and snapshots', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
 
             v.session.file = createMockFile('test.md')
             v.session.allSnapshots = [createSnapshot('test.md', 1000, 'data')]
@@ -461,7 +496,7 @@ describe('TimeMachineView', () => {
     describe('stale async results', () => {
         test('a slow fetch does not overwrite the results of a newer one', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
             const slowFile = createMockFile('slow.md')
             const fastFile = createMockFile('fast.md')
 
@@ -477,9 +512,9 @@ describe('TimeMachineView', () => {
             getSnapshotsSpy = spyOn(SnapshotService, 'getSnapshots').mockImplementation(
                 (_app: unknown, path: string) =>
                     path === 'slow.md' ? slowPromise : Promise.resolve(fastSnapshots)
-            ) as ReturnType<typeof spyOn>
+            )
 
-            v.app.vault.read = mock(async () => 'current content')
+            v.app.vault.read = mock(() => Promise.resolve('current content'))
 
             const slowUpdate = view.updateForFile(slowFile)
             await view.updateForFile(fastFile)
@@ -496,7 +531,7 @@ describe('TimeMachineView', () => {
     describe('hunk restore revision guard', () => {
         test('refuses to apply a hunk when the file changed since the diff was rendered', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
 
             const restoreSpy = spyOn(RestoreService, 'restoreHunk').mockResolvedValue(true)
             try {
@@ -508,7 +543,7 @@ describe('TimeMachineView', () => {
                 // The rendered diff was computed against this content...
                 v.session.diffBaseContent = 'content at render time'
                 // ...but the file says something else by the time restore is clicked.
-                v.app.vault.read = mock(async () => 'content after an edit')
+                v.app.vault.read = mock(() => Promise.resolve('content after an edit'))
                 v.diffViewer = { render: mock(() => {}) }
 
                 await v.handleRestoreHunk(0)
@@ -521,7 +556,7 @@ describe('TimeMachineView', () => {
 
         test('applies the hunk when the content still matches the rendered diff', async () => {
             const view = createView()
-            const v: ViewInternals = view
+            const v = internals(view)
 
             const restoreSpy = spyOn(RestoreService, 'restoreHunk').mockResolvedValue(true)
             try {
@@ -531,7 +566,7 @@ describe('TimeMachineView', () => {
                 v.plugin.settings.diffComparisonMode = 'current'
 
                 v.session.diffBaseContent = 'unchanged content'
-                v.app.vault.read = mock(async () => 'unchanged content')
+                v.app.vault.read = mock(() => Promise.resolve('unchanged content'))
                 v.diffViewer = { render: mock(() => {}) }
 
                 await v.handleRestoreHunk(0)

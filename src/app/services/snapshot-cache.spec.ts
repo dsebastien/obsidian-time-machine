@@ -1,12 +1,11 @@
-import { describe, expect, test, spyOn, afterEach } from 'bun:test'
+import { describe, expect, test, spyOn, afterEach, type Mock } from 'bun:test'
 import type { App } from 'obsidian'
 import { SnapshotCache } from './snapshot-cache'
 import { SnapshotService } from './snapshot.service'
 import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 import type { Snapshot } from '../types/snapshot.intf'
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- bun's spyOn return type widens to any; the alias keeps call sites readable
-let spy: ReturnType<typeof spyOn> | null = null
+let spy: Mock<typeof SnapshotService.getSnapshots> | null = null
 afterEach(() => {
     spy?.mockRestore()
     spy = null

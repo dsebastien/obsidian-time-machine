@@ -1,4 +1,4 @@
-import { describe, expect, test, spyOn, afterEach } from 'bun:test'
+import { describe, expect, test, spyOn, afterEach, type Mock } from 'bun:test'
 import type { App } from 'obsidian'
 import { SnapshotService } from './snapshot.service'
 import { FileRecoveryService } from './file-recovery.service'
@@ -25,12 +25,12 @@ function defaultSettings(overrides?: Partial<PluginSettings>): PluginSettings {
     return { ...DEFAULT_SETTINGS, ...overrides }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- bun's spyOn return type widens to any; the alias keeps call sites readable
-const spies: (ReturnType<typeof spyOn> | null)[] = []
+// Spies on different methods share one list; restoring is all it needs.
+const spies: Pick<Mock<() => unknown>, 'mockRestore'>[] = []
 
 afterEach(() => {
     for (const spy of spies) {
-        spy?.mockRestore()
+        spy.mockRestore()
     }
     spies.length = 0
 })
@@ -92,13 +92,11 @@ describe('SnapshotService', () => {
                 ])
             )
             spies.push(
-                spyOn(GitService, 'getFileAtCommit').mockImplementation(
-                    async (_app, hash: string) => {
-                        if (hash === 'abc123') return 'git-newest'
-                        if (hash === 'def456') return 'git-oldest'
-                        return null
-                    }
-                )
+                spyOn(GitService, 'getFileAtCommit').mockImplementation((_app, hash: string) => {
+                    if (hash === 'abc123') return Promise.resolve('git-newest')
+                    if (hash === 'def456') return Promise.resolve('git-oldest')
+                    return Promise.resolve(null)
+                })
             )
 
             const settings = defaultSettings()
@@ -139,12 +137,10 @@ describe('SnapshotService', () => {
                 ])
             )
             spies.push(
-                spyOn(GitService, 'getFileAtCommit').mockImplementation(
-                    async (_app, hash: string) => {
-                        if (hash === 'abc123') return 'content'
-                        return null // def456 fails (file renamed)
-                    }
-                )
+                spyOn(GitService, 'getFileAtCommit').mockImplementation((_app, hash: string) => {
+                    if (hash === 'abc123') return Promise.resolve('content')
+                    return Promise.resolve(null) // def456 fails (file renamed)
+                })
             )
 
             const settings = defaultSettings()

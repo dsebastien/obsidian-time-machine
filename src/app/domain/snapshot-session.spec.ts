@@ -1,13 +1,12 @@
-import { describe, expect, test, mock, spyOn, afterEach } from 'bun:test'
-import type { App, TFile } from 'obsidian'
+import { describe, expect, test, mock, spyOn, afterEach, type Mock } from 'bun:test'
+import { TFile, type App } from 'obsidian'
 import { SnapshotSession } from './snapshot-session'
 import { SnapshotCache } from '../services/snapshot-cache'
 import { SnapshotService } from '../services/snapshot.service'
 import { DEFAULT_SETTINGS, type PluginSettings } from '../types/plugin-settings.intf'
 import type { Snapshot } from '../types/snapshot.intf'
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- bun's spyOn return type widens to any; the alias keeps call sites readable
-let spy: ReturnType<typeof spyOn> | null = null
+let spy: Mock<typeof SnapshotService.getSnapshots> | null = null
 afterEach(() => {
     spy?.mockRestore()
     spy = null
@@ -24,14 +23,13 @@ function snap(id: string, ts: number, data: string): Snapshot {
     }
 }
 
-// eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
-const file = { path: 'note.md', name: 'note.md' } as unknown as TFile
+const file = Object.assign(new TFile(), { path: 'note.md', name: 'note.md' })
 
 function createSession(
     content = 'current',
     settings: PluginSettings = { ...DEFAULT_SETTINGS }
-): { session: SnapshotSession; read: ReturnType<typeof mock> } {
-    const read = mock(async () => content)
+): { session: SnapshotSession; read: Mock<(file: TFile) => Promise<string>> } {
+    const read = mock((_file: TFile) => Promise.resolve(content))
     const app = { vault: { read } } as unknown as App
     const session = new SnapshotSession(
         () => app,
@@ -76,10 +74,9 @@ describe('SnapshotSession', () => {
             })
             spy = spyOn(SnapshotService, 'getSnapshots').mockImplementation((_a, path: string) =>
                 path === 'slow.md' ? slow : Promise.resolve([snap('fast', 1000, 'x')])
-            ) as ReturnType<typeof spyOn>
+            )
 
-            // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
-            const slowFile = { path: 'slow.md', name: 'slow.md' } as unknown as TFile
+            const slowFile = Object.assign(new TFile(), { path: 'slow.md', name: 'slow.md' })
             const first = session.loadFor(slowFile)
             await session.loadFor(file)
             release([snap('slow', 1000, 'y')])
@@ -284,8 +281,7 @@ describe('SnapshotSession', () => {
     })
 
     describe('cross-file safety', () => {
-        // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
-        const other = { path: 'other.md', name: 'other.md' } as unknown as TFile
+        const other = Object.assign(new TFile(), { path: 'other.md', name: 'other.md' })
 
         test("drops the previous note's snapshots before awaiting the new fetch", async () => {
             const { session } = createSession('live')

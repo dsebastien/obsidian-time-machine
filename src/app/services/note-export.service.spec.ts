@@ -1,17 +1,15 @@
 import { describe, expect, test, mock } from 'bun:test'
-import type { App, TFile } from 'obsidian'
+import { TFile, TFolder, type App } from 'obsidian'
 import { NoteExportService } from './note-export.service'
 
 function createFile(path: string, parentPath: string | null): TFile {
     const basename = (path.split('/').pop() ?? path).replace(/\.md$/, '')
-    const stub = {
+    return Object.assign(new TFile(), {
         path,
         basename,
         name: `${basename}.md`,
-        parent: parentPath === null ? null : { path: parentPath }
-    }
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- test fixture: a real TFile cannot be constructed outside Obsidian
-    return stub as unknown as TFile
+        parent: parentPath === null ? null : Object.assign(new TFolder(), { path: parentPath })
+    })
 }
 
 function createApp(create: (path: string, data: string) => Promise<unknown>): App {

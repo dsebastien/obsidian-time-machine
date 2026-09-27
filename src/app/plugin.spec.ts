@@ -3,8 +3,54 @@ import { TimeMachinePlugin } from './plugin'
 import { TimeMachineView } from './ui/time-machine-view'
 import { VIEW_TYPE } from './constants'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- reaches into private view state that has no public accessor
-type PluginInternals = any
+interface MockFile {
+    path: string
+    name: string
+}
+
+type Callback = (...args: unknown[]) => void
+
+/**
+ * The plugin members the specs replace with doubles, typed as the doubles are
+ * shaped. Reached through `plugin as unknown as PluginInternals` because the
+ * real `App` and `Plugin` signatures cannot hold these stand-ins.
+ */
+interface PluginInternals {
+    app: {
+        workspace: {
+            onLayoutReady: (cb: () => void) => void
+            on: (event: string, cb: unknown) => { type: string; callback: unknown }
+            getLeavesOfType: (type: string) => Array<{ view: Record<string, unknown> }>
+            getActiveFile: () => MockFile | null
+            getRightLeaf: () => null
+            activeEditor: { file: MockFile } | null
+        }
+        vault: {
+            on: (event: string, cb: unknown) => { type: string; callback: unknown }
+        }
+        internalPlugins: {
+            getEnabledPluginById: (
+                id: string
+            ) => { options: { intervalMinutes: number }; db: object } | null
+        }
+    }
+    register: (cb: () => void) => void
+    registerEvent: (eventRef: { type: string; callback: Callback }) => void
+    registerInterval: (intervalId: number) => void
+    registerDomEvent: (el: unknown, type: string, callback: Callback) => void
+    registerView: () => void
+    addRibbonIcon: () => HTMLElement
+    addCommand: () => void
+    addSettingTab: () => void
+    loadData: () => Promise<null>
+    manifest: { id: string; name: string }
+}
+
+/**
+ * The global object, for swapping the `window` and `activeDocument` stubs.
+ * Reached through `self`: obsidianmd/no-global-this bans `globalThis`.
+ */
+const root = self as unknown as Record<string, unknown>
 
 // Track registered events and intervals
 let registeredEvents: Array<{ type: string; callback: (...args: unknown[]) => void }> = []
@@ -43,7 +89,7 @@ function createPlugin(
     }))
 
     const plugin = Object.create(TimeMachinePlugin.prototype) as TimeMachinePlugin
-    const p: PluginInternals = plugin
+    const p = plugin as unknown as PluginInternals
 
     p.app = {
         workspace: {
@@ -87,14 +133,14 @@ function createPlugin(
     p.addRibbonIcon = mock(() => ({ toggleClass: () => {} }) as unknown as HTMLElement)
     p.addCommand = mock(() => {})
     p.addSettingTab = mock(() => {})
-    p.loadData = mock(async () => null)
+    p.loadData = mock(() => Promise.resolve(null))
     p.manifest = { id: 'time-machine', name: 'Time Machine' }
 
     return plugin
 }
 
 describe('TimeMachinePlugin', () => {
-    const originalWindow = globalThis.window
+    const originalWindow = root['window']
 
     beforeEach(() => {
         // Provide a window mock with setInterval for bun's test environment
@@ -103,18 +149,18 @@ describe('TimeMachinePlugin', () => {
             return setIntervalCalls.length
         }) as unknown as typeof setInterval)
 
-        globalThis.window = {
+        root['window'] = {
             setInterval: mockSetInterval
-        } as unknown as Window & typeof globalThis
+        }
 
         // `activeDocument` is an Obsidian global; provide a stub for onload's
         // registerDomEvent('selectionchange', ...) registration.
-        ;(globalThis as Record<string, unknown>)['activeDocument'] = {}
+        root['activeDocument'] = {}
     })
 
     afterEach(() => {
-        globalThis.window = originalWindow
-        delete (globalThis as Record<string, unknown>)['activeDocument']
+        root['window'] = originalWindow
+        delete root['activeDocument']
     })
 
     describe('modify event handler', () => {
@@ -258,7 +304,9 @@ describe('TimeMachinePlugin', () => {
 
             // Cursor moved into a different note rendered in the same leaf.
             const cursorFile = { path: 'notes/day-2.md', name: 'day-2.md' }
-            ;(plugin as PluginInternals).app.workspace.activeEditor = { file: cursorFile }
+            ;(plugin as unknown as PluginInternals).app.workspace.activeEditor = {
+                file: cursorFile
+            }
 
             const leafChange = registeredEvents.find((e) => e.type === 'active-leaf-change')
             expect(leafChange).toBeDefined()
@@ -272,7 +320,7 @@ describe('TimeMachinePlugin', () => {
             const plugin = createPlugin([vm], { intervalMinutes: 5 })
 
             await plugin.onload()
-            ;(plugin as PluginInternals).app.workspace.activeEditor = {
+            ;(plugin as unknown as PluginInternals).app.workspace.activeEditor = {
                 file: { path: 'notes/day-1.md', name: 'day-1.md' }
             }
 
@@ -302,14 +350,14 @@ describe('TimeMachinePlugin', () => {
             await plugin.onload()
 
             // A different tab's file would resolve as "active"...
-            ;(plugin as PluginInternals).app.workspace.activeEditor = {
+            ;(plugin as unknown as PluginInternals).app.workspace.activeEditor = {
                 file: { path: 'notes/other-tab.md', name: 'other-tab.md' }
             }
 
             // ...but focus is on an element inside the Time Machine view (its slider).
             const sliderEl = {}
             vm.view['containerEl'] = { contains: (el: unknown) => el === sliderEl }
-            ;(globalThis as Record<string, unknown>)['activeDocument'] = {
+            root['activeDocument'] = {
                 activeElement: sliderEl
             }
 
@@ -324,7 +372,7 @@ describe('TimeMachinePlugin', () => {
             const plugin = createPlugin([vm], { intervalMinutes: 5 })
 
             await plugin.onload()
-            ;(plugin as PluginInternals).app.workspace.activeEditor = {
+            ;(plugin as unknown as PluginInternals).app.workspace.activeEditor = {
                 file: { path: 'notes/other-tab.md', name: 'other-tab.md' }
             }
 
@@ -341,7 +389,7 @@ describe('TimeMachinePlugin', () => {
 
             await plugin.onload()
 
-            const internals = plugin as PluginInternals
+            const internals = plugin as unknown as PluginInternals
             internals.app.workspace.getActiveFile = () => ({
                 path: 'notes/leaf-file.md',
                 name: 'leaf-file.md'
@@ -365,7 +413,7 @@ describe('TimeMachinePlugin', () => {
 
             await plugin.onload()
 
-            const internals = plugin as PluginInternals
+            const internals = plugin as unknown as PluginInternals
             internals.app.workspace.activeEditor = null
             internals.app.workspace.getActiveFile = () => ({
                 path: 'notes/other-tab.md',

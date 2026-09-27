@@ -18,6 +18,26 @@ const mockModule = (id: string, factory: () => unknown): void => {
     void (mock.module as (id: string, factory: () => unknown) => unknown)(id, factory)
 }
 
+/**
+ * File stand-ins. Specs build doubles as real instances
+ * (`Object.assign(new TFile(), { path })`) instead of casting object literals,
+ * which obsidianmd/no-tfile-tfolder-cast rejects. They must live here: a
+ * module mocked by the preload cannot gain exports from a later per-spec
+ * `mock.module`.
+ */
+class TAbstractFile {}
+class TFile extends TAbstractFile {}
+class TFolder extends TAbstractFile {}
+
+/**
+ * Bun has no `window`. Production code and specs use `window.setTimeout` and
+ * friends (obsidianmd/prefer-window-timers), and obsidianmd/no-global-this bans
+ * the `global`/`globalThis` names, so alias `window` to the global object
+ * through `self`.
+ */
+const root = self as unknown as { window?: unknown }
+root.window ??= root
+
 // Mock the obsidian module (fire-and-forget, no need to await)
 mockModule('obsidian', () => ({
     Notice: class Notice {
@@ -55,13 +75,13 @@ mockModule('obsidian', () => ({
     MarkdownRenderer: {
         render: () => Promise.resolve()
     },
-    TFile: class TFile {},
+    TFile,
     Plugin: class Plugin {},
     PluginSettingTab: class PluginSettingTab {},
     Setting: class Setting {},
     MarkdownView: class MarkdownView {},
-    TAbstractFile: class TAbstractFile {},
-    TFolder: class TFolder {},
+    TAbstractFile,
+    TFolder,
     AbstractInputSuggest: class AbstractInputSuggest {},
     SearchComponent: class SearchComponent {},
     ItemView: class ItemView {
