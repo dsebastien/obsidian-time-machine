@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.2](https://github.com/dsebastien/obsidian-time-machine/compare/2.1.1...2.1.2) (2026-09-28)
+
+### Bug Fixes
+
+* **plugin:** keep the support block from stacking on every settings refresh ([473464b](https://github.com/dsebastien/obsidian-time-machine/commit/473464b01b914816305f7a50b2c4972fa9d01694))
+
 ## [2.1.1](https://github.com/dsebastien/obsidian-time-machine/compare/2.1.0...2.1.1) (2026-09-27)
 
 ### Bug Fixes
@@ -227,6 +233,7 @@ patterns that no test can otherwise catch, and documents the traps in AGENTS.md.
 * **all:** fied the release workflow to name the tags correctly ([95aa6ff](https://github.com/dsebastien/obsidian-time-machine/commit/95aa6ffd40e718d055e24e1f052ed374e171376b))
 * **all:** fix image url ([1a0086b](https://github.com/dsebastien/obsidian-time-machine/commit/1a0086b1982b8da1f6e3c3135f27dcd9bb2ff787))
 * **all:** use console.debug instead of console.log ([09306e4](https://github.com/dsebastien/obsidian-time-machine/commit/09306e492c81437dff10dfe8b3b5e5734be1382a))
+
 
 
 
