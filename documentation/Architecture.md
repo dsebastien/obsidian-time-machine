@@ -51,7 +51,7 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 Two views, one shared core. Both implement `HistoryView` so the plugin routes to them by capability rather than by concrete class.
 
 - **TimeMachineView**: ItemView in the right sidebar. Compact surface; always follows the active file.
-- **PastView**: main-area ItemView showing a note as it was at a chosen version. Opened in a native split _before_ the leaf holding the live editor (visually left in LTR), so the right pane stays the user's real, editable note. Opens as a tab on mobile or in a narrow workspace. Bound to its file by default.
+- **PastView**: main-area ItemView showing a note as it was at a chosen version. Explicit controls switch between the selected version and its diff without creating a note. Opened in a native split _before_ the leaf holding the live editor (visually left in LTR), so the right pane stays the user's real, editable note. Opens as a tab on mobile or in a narrow workspace.
 - **TimelineBarComponent**: the version rail. Equal, fixed-width segments — one per version, never merged — grouped under time buckets, with a single shared segment width computed per render so every bucket draws identically. Scrolls when segments no longer fit and keeps the selection in view. Keyboard: arrows step, PageUp/PageDown by ten, Home/End to the edges. Controlled — it renders the selection it is given and never auto-selects. Replaces the old `TimelineSliderComponent`.
 - **DiffViewerComponent**: diff body and per-hunk restore only. The comparison control and full-restore button belong to the owning view's header.
 - **renderComparisonModeControl / renderRestoreFullButton**: shared header controls.

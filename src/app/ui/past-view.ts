@@ -27,6 +27,7 @@ import { renderEmptyState } from './components/empty-state'
 import { TimelineBarComponent } from './components/timeline-bar'
 import { DiffViewerComponent } from './components/diff-viewer'
 import { renderComparisonModeControl } from './components/comparison-mode-control'
+import { renderPastViewModeControl } from './components/past-view-mode-control'
 import { showConfirmDialog } from './components/confirm-modal'
 import type { HistoryView } from './history-view'
 import { log } from '../../utils/log'
@@ -279,7 +280,12 @@ export class PastView extends ItemView implements HistoryView {
         this.renderCommitMeta()
 
         const controls = this.tmHeaderEl.createDiv({ cls: 'tm-past-controls' })
-        this.renderDiffToggle(controls)
+        renderPastViewModeControl(controls, this.state.showDiff, (showDiff) => {
+            this.state.showDiff = showDiff
+            this.persist()
+            this.renderHeader()
+            void this.renderBody()
+        })
         if (this.state.showDiff) {
             renderComparisonModeControl(
                 controls,
@@ -326,28 +332,6 @@ export class PastView extends ItemView implements HistoryView {
                     void this.updateForFile(active)
                 }
             }
-        })
-    }
-
-    private renderDiffToggle(parent: HTMLElement): void {
-        const btn = parent.createEl('button', {
-            cls: 'tm-past-diff-toggle' + (this.state.showDiff ? ' is-active' : ''),
-            text: this.state.showDiff ? 'Showing changes' : 'Show changes',
-            attr: {
-                'aria-pressed': String(this.state.showDiff),
-                'aria-label': this.state.showDiff
-                    ? 'Showing what changed — click to see the version itself'
-                    : 'Show what changed between this version and the note'
-            }
-        })
-        const icon = btn.createSpan({ cls: 'tm-past-diff-toggle-icon' })
-        setIcon(icon, 'git-compare')
-        btn.prepend(icon)
-        btn.addEventListener('click', () => {
-            this.state.showDiff = !this.state.showDiff
-            this.persist()
-            this.renderHeader()
-            void this.renderBody()
         })
     }
 

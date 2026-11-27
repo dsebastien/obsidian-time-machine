@@ -771,6 +771,10 @@
     @apply flex flex-wrap items-center justify-between gap-2;
 }
 
+.tm-past-view-modes {
+    @apply flex flex-wrap items-center gap-2;
+}
+
 .tm-past-diff-toggle {
     @apply flex items-center cursor-pointer;
     gap: 0.35rem;
