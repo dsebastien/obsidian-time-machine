@@ -23,5 +23,5 @@ export function renderPastViewModeControl(
     }
 
     addButton(true, showDiff ? 'Showing changes' : 'Show changes', 'git-compare')
-    addButton(false, 'Show note version', 'file-text')
+    addButton(false, 'Visualize version', 'file-text')
 }

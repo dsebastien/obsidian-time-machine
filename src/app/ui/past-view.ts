@@ -382,6 +382,15 @@ export class PastView extends ItemView implements HistoryView {
         const file = this.session.file
         if (!snapshot || !file) return
 
+        if (file.extension === 'canvas') {
+            this.clearRenderChild()
+            this.bodyEl.empty()
+            this.bodyEl
+                .createEl('pre', { cls: 'tm-past-canvas-source' })
+                .createEl('code', { text: snapshot.data })
+            return
+        }
+
         // Executable blocks are defused BEFORE rendering: MarkdownRenderer runs
         // every registered post-processor, so a dataviewjs block from an old
         // version would execute — including one the user has since deleted.
@@ -462,11 +471,15 @@ export class PastView extends ItemView implements HistoryView {
             )
             menu.addItem((item) =>
                 item
-                    .setTitle('Open this version as a new note')
+                    .setTitle(
+                        this.session.file?.extension === 'canvas'
+                            ? 'Open this version as a new canvas'
+                            : 'Open this version as a new note'
+                    )
                     .setIcon('file-plus')
                     .setDisabled(!hasSelection)
                     .onClick(() => {
-                        void this.handleOpenAsNewNote()
+                        void this.handleOpenAsNewFile()
                     })
             )
 
@@ -541,7 +554,7 @@ export class PastView extends ItemView implements HistoryView {
         }
     }
 
-    private async handleOpenAsNewNote(): Promise<void> {
+    private async handleOpenAsNewFile(): Promise<void> {
         const snapshot = this.session.selectedSnapshot
         const file = this.session.file
         if (!snapshot || !file) return
@@ -557,7 +570,7 @@ export class PastView extends ItemView implements HistoryView {
         try {
             await this.app.workspace.getLeaf('tab').openFile(created)
         } catch (error) {
-            log('Could not open created note', 'error', error)
+            log('Could not open created file', 'error', error)
             new Notice(`Time Machine: Created "${created.name}" but could not open it`)
         }
     }

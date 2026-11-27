@@ -7,7 +7,7 @@ import {
 } from '../domain/history-export'
 import { replaceFrozenHistory } from '../domain/frozen-history'
 import type { Snapshot } from '../types/snapshot.intf'
-import { createSiblingNote } from './note-export.service'
+import { createSiblingFile } from './note-export.service'
 
 export interface PreparedHistory extends HistoryExport {
     path: string
@@ -20,7 +20,7 @@ export async function exportHistory(
     prepared: PreparedHistory,
     cancelled: () => boolean = () => false
 ): Promise<TFile> {
-    return createSiblingNote(vault, file, 'history', prepared.markdown, () => {
+    return createSiblingFile(vault, file, 'history', prepared.markdown, 'md', () => {
         if (cancelled()) throw new Error('History operation cancelled.')
         assertPath(file, prepared.path)
     })

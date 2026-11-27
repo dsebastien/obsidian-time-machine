@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian'
 import type { TimeMachinePlugin } from '../plugin'
 import { FileRecoveryService } from '../services/file-recovery.service'
-import { openPastView } from '../services/past-view-launcher'
+import { openPastView, supportsPastViewFile } from '../services/past-view-launcher'
 import { registerHistoryCommands } from './history-commands'
 
 export function registerCommands(plugin: TimeMachinePlugin): void {
@@ -22,7 +22,7 @@ export function registerCommands(plugin: TimeMachinePlugin): void {
         checkCallback: (checking: boolean) => {
             if (!plugin.settings.pastViewEnabled) return false
             const file = plugin.resolveActiveFile()
-            if (!file || file.extension !== 'md') return false
+            if (!file || !supportsPastViewFile(file)) return false
 
             if (!checking) {
                 void openPastView(plugin, file)

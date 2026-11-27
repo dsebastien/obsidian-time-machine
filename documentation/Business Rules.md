@@ -74,7 +74,7 @@ Git integration is desktop-only; it degrades gracefully on mobile with zero over
 
 ## Past View
 
-The past view (`time-machine-past-view`) shows a note as it was at a chosen version, read-only. It opens via `createLeafBySplit(editorLeaf, 'vertical', true)`, which inserts it **before** the leaf showing the file — visually left in standard LTR layouts. `createLeafBySplit` documents neither geometry nor sizing, so this is observed behaviour, not contract: RTL and stacked-tab layouts may place it differently, and a restored layout keeps its saved pane sizes rather than 50/50. On mobile, or when the workspace is narrower than 700px, it opens as a tab instead — the full-width past view.
+The past view (`time-machine-past-view`) shows a Markdown note or Canvas file as it was at a chosen version, read-only. Markdown files open via `createLeafBySplit(editorLeaf, 'vertical', true)`, which inserts the past view **before** the leaf showing the file — visually left in standard LTR layouts. Canvas history opens in a separate tab and shows the serialized JSON source and diffs; it does not render a historical Canvas diagram. `createLeafBySplit` documents neither geometry nor sizing, so this is observed behaviour, not contract: RTL and stacked-tab layouts may place it differently, and a restored layout keeps its saved pane sizes rather than 50/50. On mobile, or when the workspace is narrower than 700px, Markdown history opens as a tab instead — the full-width past view.
 
 **The live file is never written to for display purposes.** Swapping the real editor's content to show an old version would dirty the file, fire `modify`, and pollute file-recovery with versions the user never typed.
 
@@ -112,7 +112,7 @@ Concurrent snapshot fetches for the same (path, git settings) share one request 
 
 ## Note Creation
 
-"Open this version as a new note" writes `<basename> (yyyy-MM-dd HH-mm).md` beside the original with no prompt. History export also creates a note, named `<basename> (history).md`, after the user chooses export options. `vault.create` rejects when the path exists, so collisions are handled by catching and retrying with a numeric suffix rather than checking existence first — a pre-check races against anything else writing to the vault.
+"Open this version as a new note" writes `<basename> (yyyy-MM-dd HH-mm).md` beside a Markdown source; for a Canvas source, it is labeled "Open this version as a new canvas" and writes the snapshot JSON as `<basename> (yyyy-MM-dd HH-mm).canvas`. Both open the created file, and neither prompts. History export creates `<basename> (history).md` after the user chooses export options. `vault.create` rejects when the path exists, so collisions are handled by catching and retrying with a numeric suffix rather than checking existence first — a pre-check races against anything else writing to the vault.
 
 ## Durable History
 

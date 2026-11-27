@@ -72,3 +72,53 @@ test('shows the selected version without creating or changing a note', async () 
     expect(create).not.toHaveBeenCalled()
     expect(modify).not.toHaveBeenCalled()
 })
+
+test('shows historical Canvas snapshots as JSON source', async () => {
+    const rec = createRecording()
+    const root = createRecordingEl(rec)
+    const canvasJson = '{"nodes":[],"edges":[]}'
+    const file = Object.assign(new TFile(), {
+        path: 'board.canvas',
+        name: 'board.canvas',
+        extension: 'canvas'
+    })
+    spyOn(SnapshotService, 'getSnapshots').mockResolvedValue([
+        {
+            id: 'fr-1',
+            path: file.path,
+            ts: 1,
+            data: canvasJson,
+            source: 'file-recovery',
+            metadata: { source: 'file-recovery' }
+        }
+    ])
+    const render = spyOn(MarkdownRenderer, 'render').mockResolvedValue()
+    const plugin = Object.assign({} as TimeMachinePlugin, {
+        settings: { ...DEFAULT_SETTINGS },
+        snapshotCache: new SnapshotCache()
+    })
+    const leaf = { getViewState: () => ({}) } as WorkspaceLeaf
+    const view = new PastView(leaf, plugin)
+    Object.assign(view, {
+        leaf,
+        containerEl: { children: [null, root] },
+        app: {
+            vault: {
+                read: mock(() => Promise.resolve('{"nodes":[{"id":"current"}],"edges":[]}')),
+                create: mock(async () => {}),
+                modify: mock(async () => {})
+            },
+            workspace: { requestSaveLayout: mock(() => {}) }
+        },
+        addChild: (child: Component) => child,
+        removeChild: (child: Component) => child
+    })
+
+    await view.onOpen()
+    await view.updateForFile(file)
+    rec.clicksByClass.get('tm-past-diff-toggle')?.()
+
+    expect(rec.classes).toContain('tm-past-canvas-source')
+    expect(rec.texts).toContain(canvasJson)
+    expect(render).not.toHaveBeenCalled()
+})

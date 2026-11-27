@@ -12,12 +12,13 @@ function isAlreadyExistsError(error: unknown): boolean {
     return /already exists/i.test(describeError(error))
 }
 
-/** Creates a sibling without ever overwriting an existing file. */
-export async function createSiblingNote(
+/** Creates a sibling file without ever overwriting an existing file. */
+export async function createSiblingFile(
     vault: Pick<Vault, 'create'>,
     source: Pick<TFile, 'path' | 'basename'>,
     suffix: string,
     content: string,
+    extension: 'md' | 'canvas',
     beforeCreate?: () => void
 ): Promise<TFile> {
     const slash = source.path.lastIndexOf('/')
@@ -25,7 +26,8 @@ export async function createSiblingNote(
     const base = `${folder}${source.basename} (${suffix})`
     for (let attempt = 0; attempt < 20; attempt++) {
         beforeCreate?.()
-        const path = attempt === 0 ? `${base}.md` : `${base} ${String(attempt + 1)}.md`
+        const path =
+            attempt === 0 ? `${base}.${extension}` : `${base} ${String(attempt + 1)}.${extension}`
         try {
             return await vault.create(path, content)
         } catch (error) {
@@ -36,10 +38,10 @@ export async function createSiblingNote(
     throw new Error('Could not find a free file name after 20 attempts.')
 }
 
-/** Writes a historical version out as a new note beside the original. */
+/** Writes a historical version out as a new file beside the original. */
 export class NoteExportService {
     /**
-     * `<basename> (yyyy-MM-dd HH-mm).md` next to the source note.
+     * `<basename> (yyyy-MM-dd HH-mm).<extension>` next to the source file.
      *
      * Collisions are handled by catching the create error and retrying with a
      * numeric suffix rather than checking existence first: `vault.create`
@@ -53,14 +55,22 @@ export class NoteExportService {
         ts: number
     ): Promise<TFile | null> {
         const stamp = format(ts, 'yyyy-MM-dd HH-mm')
+        const extension = sourceFile.extension === 'canvas' ? 'canvas' : 'md'
+        const fileType = extension === 'canvas' ? 'canvas' : 'note'
         try {
-            const created = await createSiblingNote(app.vault, sourceFile, stamp, content)
-            new Notice(`Time Machine: Created "${created.name}"`)
-            log('Created note from snapshot', 'info', created.path)
+            const created = await createSiblingFile(
+                app.vault,
+                sourceFile,
+                stamp,
+                content,
+                extension
+            )
+            new Notice(`Time Machine: Created ${fileType} "${created.name}"`)
+            log('Created file from snapshot', 'info', created.path)
             return created
         } catch (error) {
-            log('Could not create note from snapshot', 'error', { path: sourceFile.path, error })
-            new Notice(`Time Machine: Could not create the note — ${describeError(error)}`)
+            log('Could not create file from snapshot', 'error', { path: sourceFile.path, error })
+            new Notice(`Time Machine: Could not create the ${fileType} — ${describeError(error)}`)
             return null
         }
     }

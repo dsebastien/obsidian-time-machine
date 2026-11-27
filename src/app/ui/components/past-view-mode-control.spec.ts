@@ -9,7 +9,7 @@ describe('renderPastViewModeControl', () => {
         renderPastViewModeControl(createRecordingEl(rec), true, onChange)
 
         expect(rec.texts).toContain('Showing changes')
-        expect(rec.texts).toContain('Show note version')
+        expect(rec.texts).toContain('Visualize version')
         expect(rec.attrsByClass.get('tm-past-diff-toggle is-active')?.['aria-pressed']).toBe('true')
         expect(rec.attrsByClass.get('tm-past-diff-toggle')?.['aria-pressed']).toBe('false')
         rec.clicksByClass.get('tm-past-diff-toggle')?.()
@@ -24,7 +24,7 @@ describe('renderPastViewModeControl', () => {
         renderPastViewModeControl(createRecordingEl(rec), false, onChange)
 
         expect(rec.texts).toContain('Show changes')
-        expect(rec.texts).toContain('Show note version')
+        expect(rec.texts).toContain('Visualize version')
         rec.clicksByClass.get('tm-past-diff-toggle')?.()
         expect(onChange).toHaveBeenCalledWith(true)
         rec.clicksByClass.get('tm-past-diff-toggle is-active')?.()
