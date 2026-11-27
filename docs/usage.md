@@ -17,7 +17,7 @@ For the fuller experience, run **Time Machine: Compare versions side by side** (
 
 ![The past view open beside the live editor: the version rail and an old version of the note on the left, the note being edited in the middle, and the Time Machine panel with a diff on the right](images/side-by-side.png)
 
-The sidebar is the quick look. The past view is the full one: it opens your note **as it was**, in a pane beside the editor, so you can read an old version on the left while your real, editable note stays on the right. Drag the divider to resize.
+The sidebar is the quick look. The past view is the full one: it opens a Markdown note **as it was**, in a pane beside the editor, so you can read an old version on the left while your real, editable note stays on the right. Drag the divider to resize. Canvas files are also supported; their history opens in a separate tab and shows the saved Canvas JSON and diffs rather than a rendered diagram.
 
 Open it with the command **Time Machine: Compare versions side by side**, the two-columns icon in the ribbon, a right-click on a note in the file explorer or inside the editor, or the **Side by side** button in the panel's header (which carries your current selection across).
 
@@ -27,9 +27,9 @@ Once open:
 
 - **Click a version** on the rail at the top. Every version gets its own mark -- none are merged away -- grouped under headings like Today, 7 days, 30 days and then by year. Hovering a mark tells you exactly which version it is, and clicking a heading jumps to the newest version in that group.
 - **Keyboard**: focus the rail, then arrow left/right to step one version, PageUp/PageDown to move ten at a time, Home for the newest and End for the oldest.
-- **Show changes** flips the pane between the old version and the diff.
+- **Visualize version** displays the selected version read-only without creating a note. **Show changes** returns to the diff.
 - **Follow / bind** (the pin button) decides whether the pane follows whatever note you open, or stays on one. It follows by default, like the sidebar panel — click the pin to hold it on the current note.
-- **The menu** (⋮) restores the whole version, copies it, or saves it as a new note beside the original.
+- **The menu** (⋮) restores the whole version, copies it, or saves it beside the original. For Markdown, it creates a new note; for Canvas, it creates a new `.canvas` file and opens it in Canvas.
 
 ### Old versions do not run their code
 
@@ -47,7 +47,7 @@ This is deliberate. Rendering an old version would otherwise execute that code a
 | **Time Machine: Export version history to Markdown**            | Saves recorded history as a separate Markdown note beside the current note                     |
 | **Time Machine: Freeze version history into current note**      | Inserts or replaces a static history section in the current note, after confirmation           |
 
-Only markdown notes have a history, so **Compare versions side by side** does not appear unless a markdown note is active. It is also hidden entirely when the side-by-side view is turned off in settings.
+Markdown notes and Canvas files can open a past view. Other file types are not supported. The command does not appear unless a supported file is active, and it is hidden entirely when the side-by-side view is turned off in settings.
 
 ### Other ways in
 

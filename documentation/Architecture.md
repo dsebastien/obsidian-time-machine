@@ -24,7 +24,7 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 - **DiffService**: Wraps `diff` (jsdiff) `structuredPatch` for computing diffs
 - **RestoreService**: Full version restore via `vault.modify()` + selective hunk restoration via line manipulation
 - **SnapshotCache**: coalesces concurrent snapshot fetches per (path, git settings). Several open views on one note would otherwise each run one `git show` per commit.
-- **NoteExportService / createSiblingNote**: writes a historical version or a history export beside the original; shared collision-safe creation retries only name collisions.
+- **NoteExportService / createSiblingFile**: writes a historical Markdown version as `.md` or Canvas snapshot as `.canvas` beside the original; history exports remain `.md`. Shared collision-safe creation retries only name collisions.
 - **history-export.service.ts**: orchestrates durable export/freeze, capturing the source before fetching history. Freeze requires confirmation and an atomic `vault.process` content/path guard. Unchanged output is not written again.
 - **past-view-launcher.ts**: `openPastView` — resolves the root leaf showing the file, splits before it, reuses an existing past view (detected via `leaf.getViewState()`, since deferred leaves expose a `DeferredView`).
 
@@ -51,7 +51,7 @@ Time Machine is a sidebar ItemView plugin that reads snapshots from multiple sou
 Two views, one shared core. Both implement `HistoryView` so the plugin routes to them by capability rather than by concrete class.
 
 - **TimeMachineView**: ItemView in the right sidebar. Compact surface; always follows the active file.
-- **PastView**: main-area ItemView showing a note as it was at a chosen version. Opened in a native split _before_ the leaf holding the live editor (visually left in LTR), so the right pane stays the user's real, editable note. Opens as a tab on mobile or in a narrow workspace. Bound to its file by default.
+- **PastView**: main-area ItemView showing a Markdown note or Canvas file as it was at a chosen version. **Visualize version** shows the selected version; **Show changes** switches to its diff without creating a note. Markdown opens in a native split _before_ the leaf holding the live editor (visually left in LTR); Canvas opens in a separate tab and shows its serialized JSON source, not a rendered diagram. Opens as a tab on mobile or in a narrow workspace.
 - **TimelineBarComponent**: the version rail. Equal, fixed-width segments — one per version, never merged — grouped under time buckets, with a single shared segment width computed per render so every bucket draws identically. Scrolls when segments no longer fit and keeps the selection in view. Keyboard: arrows step, PageUp/PageDown by ten, Home/End to the edges. Controlled — it renders the selection it is given and never auto-selects. Replaces the old `TimelineSliderComponent`.
 - **DiffViewerComponent**: diff body and per-hunk restore only. The comparison control and full-restore button belong to the owning view's header.
 - **renderComparisonModeControl / renderRestoreFullButton**: shared header controls.

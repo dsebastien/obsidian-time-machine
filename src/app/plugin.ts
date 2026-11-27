@@ -19,7 +19,7 @@ import { registerCommands } from './commands/register-commands'
 import { FileRecoveryService } from './services/file-recovery.service'
 import { SnapshotCache } from './services/snapshot-cache'
 import { PastView } from './ui/past-view'
-import { openPastView } from './services/past-view-launcher'
+import { openPastView, supportsPastViewFile } from './services/past-view-launcher'
 import type { HistoryView } from './ui/history-view'
 import type { DiffComparisonMode } from './types/plugin-settings.intf'
 
@@ -145,8 +145,8 @@ export class TimeMachinePlugin extends Plugin {
             'Open past view for current note',
             () => {
                 const file = this.resolveActiveFile()
-                if (!file || file.extension !== 'md') {
-                    new Notice('Time Machine: open a Markdown note first')
+                if (!file || !supportsPastViewFile(file)) {
+                    new Notice('Time Machine: open a Markdown note or canvas file first')
                     return
                 }
                 void openPastView(this, file)
@@ -157,7 +157,7 @@ export class TimeMachinePlugin extends Plugin {
         const addMenuItem = (menu: Menu, file: TAbstractFile | null): void => {
             if (!this.settings.pastViewEnabled) return
             // `file-menu` hands over a TAbstractFile, which may be a folder.
-            if (!(file instanceof TFile) || file.extension !== 'md') return
+            if (!(file instanceof TFile) || !supportsPastViewFile(file)) return
 
             menu.addItem((item) =>
                 item

@@ -27,6 +27,7 @@ import { renderEmptyState } from './components/empty-state'
 import { TimelineBarComponent } from './components/timeline-bar'
 import { DiffViewerComponent } from './components/diff-viewer'
 import { renderComparisonModeControl } from './components/comparison-mode-control'
+import { renderPastViewModeControl } from './components/past-view-mode-control'
 import { showConfirmDialog } from './components/confirm-modal'
 import type { HistoryView } from './history-view'
 import { log } from '../../utils/log'
@@ -279,7 +280,12 @@ export class PastView extends ItemView implements HistoryView {
         this.renderCommitMeta()
 
         const controls = this.tmHeaderEl.createDiv({ cls: 'tm-past-controls' })
-        this.renderDiffToggle(controls)
+        renderPastViewModeControl(controls, this.state.showDiff, (showDiff) => {
+            this.state.showDiff = showDiff
+            this.persist()
+            this.renderHeader()
+            void this.renderBody()
+        })
         if (this.state.showDiff) {
             renderComparisonModeControl(
                 controls,
@@ -329,28 +335,6 @@ export class PastView extends ItemView implements HistoryView {
         })
     }
 
-    private renderDiffToggle(parent: HTMLElement): void {
-        const btn = parent.createEl('button', {
-            cls: 'tm-past-diff-toggle' + (this.state.showDiff ? ' is-active' : ''),
-            text: this.state.showDiff ? 'Showing changes' : 'Show changes',
-            attr: {
-                'aria-pressed': String(this.state.showDiff),
-                'aria-label': this.state.showDiff
-                    ? 'Showing what changed — click to see the version itself'
-                    : 'Show what changed between this version and the note'
-            }
-        })
-        const icon = btn.createSpan({ cls: 'tm-past-diff-toggle-icon' })
-        setIcon(icon, 'git-compare')
-        btn.prepend(icon)
-        btn.addEventListener('click', () => {
-            this.state.showDiff = !this.state.showDiff
-            this.persist()
-            this.renderHeader()
-            void this.renderBody()
-        })
-    }
-
     private async renderBody(): Promise<void> {
         if (!this.bodyEl) return
 
@@ -397,6 +381,15 @@ export class PastView extends ItemView implements HistoryView {
         const snapshot = this.session.selectedSnapshot
         const file = this.session.file
         if (!snapshot || !file) return
+
+        if (file.extension === 'canvas') {
+            this.clearRenderChild()
+            this.bodyEl.empty()
+            this.bodyEl
+                .createEl('pre', { cls: 'tm-past-canvas-source' })
+                .createEl('code', { text: snapshot.data })
+            return
+        }
 
         // Executable blocks are defused BEFORE rendering: MarkdownRenderer runs
         // every registered post-processor, so a dataviewjs block from an old
@@ -478,11 +471,15 @@ export class PastView extends ItemView implements HistoryView {
             )
             menu.addItem((item) =>
                 item
-                    .setTitle('Open this version as a new note')
+                    .setTitle(
+                        this.session.file?.extension === 'canvas'
+                            ? 'Open this version as a new canvas'
+                            : 'Open this version as a new note'
+                    )
                     .setIcon('file-plus')
                     .setDisabled(!hasSelection)
                     .onClick(() => {
-                        void this.handleOpenAsNewNote()
+                        void this.handleOpenAsNewFile()
                     })
             )
 
@@ -557,7 +554,7 @@ export class PastView extends ItemView implements HistoryView {
         }
     }
 
-    private async handleOpenAsNewNote(): Promise<void> {
+    private async handleOpenAsNewFile(): Promise<void> {
         const snapshot = this.session.selectedSnapshot
         const file = this.session.file
         if (!snapshot || !file) return
@@ -573,7 +570,7 @@ export class PastView extends ItemView implements HistoryView {
         try {
             await this.app.workspace.getLeaf('tab').openFile(created)
         } catch (error) {
-            log('Could not open created note', 'error', error)
+            log('Could not open created file', 'error', error)
             new Notice(`Time Machine: Created "${created.name}" but could not open it`)
         }
     }

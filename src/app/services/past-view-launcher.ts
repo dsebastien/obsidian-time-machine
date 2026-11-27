@@ -23,6 +23,10 @@ export interface PastViewSelection {
     snapshotTimestamp: number | null
 }
 
+export function supportsPastViewFile(file: Pick<TFile, 'extension'>): boolean {
+    return file.extension === 'md' || file.extension === 'canvas'
+}
+
 /**
  * Opens in flight, keyed by path.
  *
@@ -36,8 +40,8 @@ export async function openPastView(
     file: TFile,
     selection: PastViewSelection = { snapshotId: null, snapshotTimestamp: null }
 ): Promise<void> {
-    if (file.extension !== 'md') {
-        new Notice('Time Machine: only Markdown notes have a history view')
+    if (!supportsPastViewFile(file)) {
+        new Notice('Time Machine: only Markdown notes and canvas files have a history view')
         return
     }
 
@@ -77,12 +81,14 @@ async function doOpenPastView(
         return
     }
 
-    let targetLeaf = findEditorLeafForFile(plugin, file)
+    let targetLeaf = file.extension === 'md' ? findEditorLeafForFile(plugin, file) : null
 
     // Launched from the file explorer, where the note may not be open at all.
     // Open it in a root editor first, so the split still yields the promised
-    // old-version-left / live-note-right arrangement.
-    if (!targetLeaf && canSplit(plugin)) {
+    // old-version-left / live-note-right arrangement. Canvas files use a
+    // separate tab: their view is not a MarkdownView and should not be opened
+    // a second time just to create a split.
+    if (file.extension === 'md' && !targetLeaf && canSplit(plugin)) {
         const editorLeaf = app.workspace.getLeaf('tab')
         await editorLeaf.openFile(file)
         targetLeaf = editorLeaf

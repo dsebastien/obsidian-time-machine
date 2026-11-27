@@ -40,13 +40,13 @@ The settings tab includes:
 
 ## Commands
 
-| ID                       | Name                                          | Notes                                                                    |
-| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------------ |
-| `open-view`              | Open view                                     | Sidebar history view                                                     |
-| `open-past-view`         | Open past view for current note               | Hidden when `pastViewEnabled` is off or the note is not `.md`            |
-| `force-snapshot`         | Force file recovery snapshot for current file | Hidden when no file is active                                            |
-| `export-version-history` | Export version history to Markdown            | Current Markdown note; diffs/all available versions by default           |
-| `freeze-version-history` | Freeze version history into current note      | Current Markdown note; diffs/latest 20 by default; explicit confirmation |
+| ID                       | Name                                          | Notes                                                                           |
+| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------- |
+| `open-view`              | Open view                                     | Sidebar history view                                                            |
+| `open-past-view`         | Open past view for current note               | Hidden when `pastViewEnabled` is off or the file is neither `.md` nor `.canvas` |
+| `force-snapshot`         | Force file recovery snapshot for current file | Hidden when no file is active                                                   |
+| `export-version-history` | Export version history to Markdown            | Current Markdown note; diffs/all available versions by default                  |
+| `freeze-version-history` | Freeze version history into current note      | Current Markdown note; diffs/latest 20 by default; explicit confirmation        |
 
 Command names must not contain the plugin name — Obsidian already prefixes them with it in the palette.
 
@@ -58,6 +58,6 @@ semantics, limits, safety checks and user workflows.
 ## Other entry points for the past view
 
 - Ribbon icon (clock/history)
-- File menu (`file-menu`) on markdown notes
+- File menu (`file-menu`) on Markdown notes and Canvas files
 - Editor context menu (`editor-menu`)
 - "Open past view" button in the sidebar view header

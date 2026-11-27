@@ -3,11 +3,14 @@ import { TFile, TFolder, type App } from 'obsidian'
 import { NoteExportService } from './note-export.service'
 
 function createFile(path: string, parentPath: string | null): TFile {
-    const basename = (path.split('/').pop() ?? path).replace(/\.md$/, '')
+    const name = path.split('/').pop() ?? path
+    const extension = name.endsWith('.canvas') ? 'canvas' : 'md'
+    const basename = name.replace(/\.(?:canvas|md)$/, '')
     return Object.assign(new TFile(), {
         path,
         basename,
-        name: `${basename}.md`,
+        name,
+        extension,
         parent: parentPath === null ? null : Object.assign(new TFolder(), { path: parentPath })
     })
 }
@@ -34,6 +37,31 @@ describe('NoteExportService.createFromSnapshot', () => {
         )
 
         expect(paths[0]).toMatch(/^notes\/deep\/Note \(2026-08-27 \d\d-\d\d\)\.md$/)
+    })
+
+    test('writes Canvas snapshots to a timestamped sibling Canvas file', async () => {
+        const paths: string[] = []
+        const canvasContent = '{"nodes":[],"edges":[]}'
+        let attempts = 0
+        const app = createApp((path, data) => {
+            paths.push(path)
+            expect(data).toBe(canvasContent)
+            attempts++
+            if (attempts === 1) return Promise.reject(new Error('File already exists.'))
+            return Promise.resolve({ name: path })
+        })
+
+        const created = await NoteExportService.createFromSnapshot(
+            app,
+            createFile('boards/Board.canvas', 'boards'),
+            canvasContent,
+            ts
+        )
+
+        expect(paths).toHaveLength(2)
+        expect(paths[0]).toMatch(/^boards\/Board \(2026-08-27 \d\d-\d\d\)\.canvas$/)
+        expect(paths[1]).toMatch(/^boards\/Board \(2026-08-27 \d\d-\d\d\) 2\.canvas$/)
+        expect(created?.name).toBe(paths[1])
     })
 
     test('does not produce a leading slash for a note at the vault root', async () => {
